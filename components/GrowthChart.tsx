@@ -8,37 +8,32 @@ interface GrowthChartProps {
 
 export default function GrowthChart({ data }: GrowthChartProps) {
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
-      <h2 className="font-bold text-lg mb-6">Employee Growth</h2>
-      <div className="h-[300px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-            <XAxis 
-              dataKey="month" 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: '#9ca3af', fontSize: 12 }} 
-              dy={10}
-            />
-            <YAxis 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: '#9ca3af', fontSize: 12 }} 
-            />
-            <Tooltip 
-              cursor={{ fill: '#f9fafb' }}
-              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-            />
-            <Bar 
-              dataKey="count" 
-              fill="#1E3A8A" 
-              radius={[4, 4, 0, 0]} 
-              barSize={40} 
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+        <XAxis 
+          dataKey="month" 
+          axisLine={false} 
+          tickLine={false} 
+          tick={{ fill: '#9ca3af', fontSize: 12 }} 
+          dy={10}
+        />
+        <YAxis 
+          axisLine={false} 
+          tickLine={false} 
+          tick={{ fill: '#9ca3af', fontSize: 12 }} 
+        />
+        <Tooltip 
+          cursor={{ fill: '#f9fafb' }}
+          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+        />
+        <Bar 
+          dataKey="count" 
+          fill="#1E3A8A" 
+          radius={[4, 4, 0, 0]} 
+          barSize={40} 
+        />
+      </BarChart>
+    </ResponsiveContainer>
   );
 }
