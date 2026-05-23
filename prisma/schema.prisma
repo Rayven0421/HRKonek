@@ -31,15 +31,24 @@ model Employee {
 }
 
 model Applicant {
-  id         String   @id @default(uuid())
-  firstName  String
-  lastName   String
-  email      String   @unique
-  phone      String?
-  position   String
-  status     String   @default("Applied") // e.g., Applied, Interviewing, Offered, Rejected, Hired
-  resumeUrl  String?
-  appliedAt  DateTime @default(now())
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id                String   @id @default(uuid())
+  firstName         String
+  lastName          String
+  email             String   @unique
+  phone             String?
+  address           String?
+  position          String
+  expectedSalary    String?
+  yearsOfExperience String?
+  sssNumber         String?
+  pagibigNumber     String?
+  philhealthNumber  String?
+  tinNumber         String?
+  resumeUrl         String?
+  coverLetterUrl    String?
+  otherDocsUrl      String?
+  status            String   @default("Applied")
+  appliedAt         DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }

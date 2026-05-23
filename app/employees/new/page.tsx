@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 
 interface FormData {
   firstName: string;
@@ -141,7 +142,7 @@ export default function NewEmployeePage() {
       {/* Header */}
       <header className="w-full bg-[#1E3A8A] text-white px-8 py-6 flex flex-col gap-1 relative z-10">
         <Link href="/employees" className="flex items-center gap-2 font-bold text-xl hover:opacity-90 transition-opacity">
-          <span>←</span> Add New Employee
+          <ChevronLeft className="w-5 h-5" /> Add New Employee
         </Link>
         <span className="text-sm text-blue-100">Enter employee information</span>
       </header>
