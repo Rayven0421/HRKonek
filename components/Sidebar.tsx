@@ -88,7 +88,7 @@ export default function Sidebar() {
       {/* ── Mobile: hamburger button in top-left ── */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-40 bg-[#1E3A8A] text-white p-2 rounded-lg shadow-lg"
+        className="lg:hidden fixed top-4 left-4 z-40 bg-[#1E3A8A] text-white p-2 rounded-lg shadow-lg print:hidden"
         aria-label="Open menu"
       >
         <Menu className="w-5 h-5" />
