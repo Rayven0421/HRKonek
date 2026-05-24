@@ -10,13 +10,15 @@ import {
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Applicant = {
-  id:         string;
-  firstName:  string;
-  lastName:   string;
-  position:   string;
-  appliedAt:  Date;
-  status:     string;
-  resumeUrl?: string;
+  id:              string;
+  firstName:       string;
+  lastName:        string;
+  position:        string;
+  appliedAt:       Date;
+  status:          string;
+  resumeUrl?:      string;
+  coverLetterUrl?: string;
+  otherDocsUrl?:   string;
 };
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -45,12 +47,15 @@ function isPdf(url: string) {
 // ── Resume viewer dialog ───────────────────────────────────────────────────────
 function ResumeDialog({
   applicant,
+  url,
+  docLabel,
   onClose,
 }: {
   applicant: Applicant;
+  url:       string;
+  docLabel:  string;
   onClose:   () => void;
 }) {
-  const url        = applicant.resumeUrl!;
   const showIframe = isPdf(url);
   const name       = `${applicant.firstName} ${applicant.lastName}`;
 
@@ -75,7 +80,7 @@ function ResumeDialog({
             </div>
             <div>
               <p className="font-semibold text-gray-900 text-sm leading-tight">{name}</p>
-              <p className="text-xs text-gray-400">{applicant.position}</p>
+              <p className="text-xs text-gray-400">{docLabel}</p>
             </div>
           </div>
 
@@ -113,7 +118,7 @@ function ResumeDialog({
               src={url}
               className="w-full h-full"
               style={{ minHeight: '65vh' }}
-              title={`Resume – ${name}`}
+              title={`${docLabel} – ${name}`}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full py-20 gap-5">
@@ -132,13 +137,69 @@ function ResumeDialog({
                 className="flex items-center gap-2 bg-[#1E3A8A] hover:bg-blue-900 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors"
               >
                 <Download className="w-4 h-4" />
-                Download Resume
+                Download {docLabel}
               </a>
             </div>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+// ── Document picker (portaled) ─────────────────────────────────────────────────
+function DocumentPicker({
+  docs,
+  buttonRect,
+  onSelect,
+  onClose,
+}: {
+  docs:       { url: string; label: string }[];
+  buttonRect: DOMRect;
+  onSelect:   (url: string, label: string) => void;
+  onClose:    () => void;
+}) {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleMouseDown(e: MouseEvent) {
+      const target = e.target as Node;
+      if (menuRef.current?.contains(target)) return;
+      onClose();
+    }
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => document.removeEventListener('mousedown', handleMouseDown);
+  }, [onClose]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      ref={menuRef}
+      style={{
+        position: 'fixed',
+        top:   buttonRect.bottom + 4,
+        left:  buttonRect.left,
+        zIndex: 9999,
+      }}
+      className="bg-white border border-gray-200 rounded-xl shadow-xl p-1.5 min-w-[180px]"
+    >
+      {docs.map(doc => (
+        <button
+          key={doc.url}
+          onClick={() => onSelect(doc.url, doc.label)}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          <FileText className="w-4 h-4 text-gray-400" />
+          {doc.label}
+        </button>
+      ))}
+    </div>,
+    document.body,
   );
 }
 
@@ -278,7 +339,17 @@ export default function ApplicantTable({ applicants }: { applicants: Applicant[]
 
   const [searchTerm,    setSearchTerm]    = useState('');
   const [statusFilters, setStatusFilters] = useState<string[]>([]);
-  const [resumeTarget,  setResumeTarget]  = useState<Applicant | null>(null);
+  const [docDialog, setDocDialog] = useState<{
+    applicant: Applicant;
+    url:       string;
+    docLabel:  string;
+  } | null>(null);
+
+  const [pickerState, setPickerState] = useState<{
+    applicant: Applicant;
+    docs:      { url: string; label: string }[];
+    buttonRect: DOMRect;
+  } | null>(null);
   const [updatingId,    setUpdatingId]    = useState<string | null>(null);
 
   // Stable ID map — reverse so A001 = oldest
@@ -310,11 +381,27 @@ export default function ApplicantTable({ applicants }: { applicants: Applicant[]
 
   return (
     <>
-      {resumeTarget && (
+      {docDialog && (
         <ResumeDialog
-          applicant={resumeTarget}
-          onClose={() => setResumeTarget(null)}
+          applicant={docDialog.applicant}
+          url={docDialog.url}
+          docLabel={docDialog.docLabel}
+          onClose={() => setDocDialog(null)}
         />
+      )}
+
+      {pickerState && typeof document !== 'undefined' && createPortal(
+        <DocumentPicker
+          docs={pickerState.docs}
+          buttonRect={pickerState.buttonRect}
+          onSelect={(url, label) => {
+            const applicant = pickerState.applicant;
+            setPickerState(null);
+            setDocDialog({ applicant, url, docLabel: label });
+          }}
+          onClose={() => setPickerState(null)}
+        />,
+        document.body,
       )}
 
       {/* Removed overflow-hidden from this wrapper — it was clipping the portal-ed
@@ -355,58 +442,70 @@ export default function ApplicantTable({ applicants }: { applicants: Applicant[]
                 <th className="px-4 py-3 min-w-[140px]">Position</th>
                 <th className="px-4 py-3 w-32">Applied</th>
                 <th className="px-4 py-3 w-44">Status</th>
-                <th className="px-4 py-3 w-24">Resume</th>
+                <th className="px-4 py-3 w-24">Docs</th>
                 <th className="px-4 py-3 w-44">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtered.length > 0 ? (
-                filtered.map(app => {
-                  const stableId   = idMap.get(app.id) ?? '—';
-                  const style      = STATUS_STYLES[app.status];
-                  const isUpdating = updatingId === app.id;
+                  filtered.map(app => {
+                    const stableId      = idMap.get(app.id) ?? '—';
+                    const style         = STATUS_STYLES[app.status];
+                    const isUpdating    = updatingId === app.id;
+                    const availableDocs = [
+                      app.resumeUrl      && { url: app.resumeUrl,      label: 'Resume / CV' },
+                      app.coverLetterUrl && { url: app.coverLetterUrl, label: 'Cover Letter' },
+                      app.otherDocsUrl   && { url: app.otherDocsUrl,   label: 'Other Documents' },
+                    ].filter(Boolean) as { url: string; label: string }[];
 
-                  return (
-                    <tr key={app.id} className="hover:bg-gray-50 transition-colors">
+                    return (
+                      <tr key={app.id} className="hover:bg-gray-50 transition-colors">
 
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                          {stableId}
-                        </span>
-                      </td>
+                        <td className="px-4 py-3">
+                          <span className="font-mono text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                            {stableId}
+                          </span>
+                        </td>
 
-                      <td className="px-4 py-3 font-medium text-gray-900">
-                        {app.firstName} {app.lastName}
-                      </td>
+                        <td className="px-4 py-3 font-medium text-gray-900">
+                          {app.firstName} {app.lastName}
+                        </td>
 
-                      <td className="px-4 py-3 text-gray-600 truncate max-w-[160px]">{app.position}</td>
+                        <td className="px-4 py-3 text-gray-600 truncate max-w-[160px]">{app.position}</td>
 
-                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                        {new Date(app.appliedAt).toLocaleDateString('en-PH', {
-                          year: 'numeric', month: 'short', day: 'numeric',
-                        })}
-                      </td>
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                          {new Date(app.appliedAt).toLocaleDateString('en-PH', {
+                            year: 'numeric', month: 'short', day: 'numeric',
+                          })}
+                        </td>
 
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${style?.pill ?? 'bg-gray-100 text-gray-700'}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${style?.dot ?? 'bg-gray-400'}`} />
-                          {app.status}
-                        </span>
-                      </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${style?.pill ?? 'bg-gray-100 text-gray-700'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${style?.dot ?? 'bg-gray-400'}`} />
+                            {app.status}
+                          </span>
+                        </td>
 
-                      <td className="px-4 py-3">
-                        {app.resumeUrl ? (
-                          <button
-                            onClick={() => setResumeTarget(app)}
-                            className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            View
-                          </button>
-                        ) : (
-                          <span className="text-xs text-gray-300 italic">None</span>
-                        )}
-                      </td>
+                        <td className="px-4 py-3">
+                          {availableDocs.length === 0 ? (
+                            <span className="text-xs text-gray-300 italic">None</span>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                if (availableDocs.length === 1) {
+                                  setDocDialog({ applicant: app, url: availableDocs[0].url, docLabel: availableDocs[0].label });
+                                } else {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setPickerState({ applicant: app, docs: availableDocs, buttonRect: rect });
+                                }
+                              }}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              View
+                            </button>
+                          )}
+                        </td>
 
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">

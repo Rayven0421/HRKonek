@@ -43,17 +43,18 @@ const InputField = ({
   error?: string;
 }) => (
   <div className="flex flex-col gap-1">
-    <label className="text-xs font-medium text-[#1E3A8A]">{label}</label>
+    <label className="text-sm font-medium text-gray-700">{label}</label>
     <input
       type={type}
-      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
-        error ? "border-red-500 bg-red-50" : "border-gray-300"
-      }`}
+      className={`w-full px-3 py-2.5 border rounded-lg text-gray-900 placeholder-gray-400 text-sm bg-white
+        focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all ${
+          error ? "border-red-500 bg-red-50" : "border-gray-300"
+        }`}
       placeholder={placeholder}
       value={value}
       onChange={(e) => onChange(e.target.value)}
     />
-    {error && <span className="text-[10px] text-red-500">{error}</span>}
+    {error && <span className="text-xs font-medium text-red-600">{error}</span>}
   </div>
 );
 

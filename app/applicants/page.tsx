@@ -14,7 +14,9 @@ export default async function ApplicantsPage() {
   // Assign stable IDs based on insertion/application order, not display order
   const applicants = rawApplicants.map((a, index) => ({
     ...a,
-    resumeUrl:   a.resumeUrl ?? undefined,
+    resumeUrl:      a.resumeUrl      ?? undefined,
+    coverLetterUrl: a.coverLetterUrl ?? undefined,
+    otherDocsUrl:   a.otherDocsUrl   ?? undefined,
     applicantId: `A${String(index + 1).padStart(3, '0')}`,  // A001 = oldest
   }));
 
