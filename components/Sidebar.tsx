@@ -19,21 +19,19 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   return (
     <div className="flex flex-col h-full bg-[#1E3A8A] text-white">
       {/* Brand */}
-      <div className="p-5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full border border-white/60 flex items-center justify-center font-bold text-white text-sm flex-shrink-0">
-            HR
-          </div>
-          <div>
-            <div className="font-bold text-base text-white leading-tight">HRKonek</div>
-            <div className="text-white/60 text-xs">Management Portal</div>
-          </div>
+      <div className="p-2 flex items-center justify-between">
+        <div className="w-full flex items-center justify-center overflow-hidden">
+          <img
+            src="/hrkonek-logo-top-sidebar.jpg"
+            alt="HRKonek"
+            className="w-full h-auto max-h-48 object-cover scale-125"
+          />
         </div>
         {/* Close button — mobile only */}
         {onClose && (
           <button
             onClick={onClose}
-            className="lg:hidden text-white/70 hover:text-white p-1 rounded transition-colors"
+            className="lg:hidden text-white/70 hover:text-white p-1 rounded transition-colors flex-shrink-0"
             aria-label="Close menu"
           >
             <X className="w-5 h-5" />

@@ -61,27 +61,12 @@ export default function Home() {
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-6">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-[#1E3A8A] flex items-center justify-center bg-white shadow-sm">
-            <svg
-              className="w-10 h-10 sm:w-12 sm:h-12 text-[#1E3A8A]"
-              viewBox="0 0 100 100"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M28 25 V75 M28 50 H52 M52 25 V75"
-                stroke="currentColor"
-                strokeWidth="8"
-                strokeLinecap="round"
-              />
-              <path
-                d="M52 25 H68 C78 25 78 50 68 50 H52 M68 50 L80 75"
-                stroke="currentColor"
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+          <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-2 border-[#1E3A8A] flex items-center justify-center bg-white shadow-sm overflow-hidden">
+            <img
+              src="/hrkonek-icon.png"
+              alt="HRKonek"
+              className="w-full h-full object-cover"
+            />
           </div>
           <span className="text-2xl font-bold text-gray-900 mt-3 tracking-wide">
             HRKonek
