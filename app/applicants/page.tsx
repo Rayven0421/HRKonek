@@ -6,24 +6,31 @@ import ApplicantTable from '@/components/ApplicantTable';
 import { Bell, UserCircle, FileText } from 'lucide-react';
 
 export default async function ApplicantsPage() {
-  const applicants = await prisma.applicant.findMany({
-    orderBy: { appliedAt: 'desc' },
+  // ── Fetch oldest-first so index 0 = A001 (stable, chronological IDs) ──────
+  const rawApplicants = await prisma.applicant.findMany({
+    orderBy: { appliedAt: 'asc' },
   });
 
-  const pendingCount = applicants.filter(a => a.status === 'Applied' || a.status === 'Under Review').length;
-  const hiredCount = applicants.filter(a => a.status === 'Hired').length;
+  // Assign stable IDs based on insertion/application order, not display order
+  const applicants = rawApplicants.map((a, index) => ({
+    ...a,
+    resumeUrl:   a.resumeUrl ?? undefined,
+    applicantId: `A${String(index + 1).padStart(3, '0')}`,  // A001 = oldest
+  }));
+
+  // Pass newest-first as the default — the client table handles re-sorting
+  const defaultSorted = [...applicants].reverse();
+
+  const pendingCount   = applicants.filter(a => a.status === 'Applied' || a.status === 'Under Review').length;
+  const hiredCount     = applicants.filter(a => a.status === 'Hired').length;
   const interviewCount = applicants.filter(a => a.status === 'Interview Scheduled').length;
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
-
-      {/* Sidebar */}
       <Sidebar />
 
-      {/* Main column */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
 
-        {/* Sticky navbar */}
         <header className="flex-shrink-0 h-16 bg-[#1E3A8A] flex items-center justify-between px-4 sm:px-8 shadow-md z-10">
           <div className="w-8 lg:hidden" />
           <div className="hidden lg:block text-white font-semibold text-base tracking-wide opacity-80 select-none">
@@ -45,20 +52,13 @@ export default async function ApplicantsPage() {
           </div>
         </header>
 
-        {/* Scrollable content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-
-          {/* Page header */}
           <div className="mb-6">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-              Applicant Management
-            </h1>
-            <p className="text-gray-500 text-sm mt-0.5">
-              Review and manage job applicants
-            </p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Applicant Management</h1>
+            <p className="text-gray-500 text-sm mt-0.5">Review and manage job applicants</p>
           </div>
 
-          {/* Quick stat pills */}
+          {/* Stat pills */}
           <div className="flex flex-wrap gap-3 mb-6">
             <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-4 py-2 shadow-sm">
               <FileText className="w-4 h-4 text-blue-600" />
@@ -82,9 +82,8 @@ export default async function ApplicantsPage() {
             </div>
           </div>
 
-          {/* Table card */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <ApplicantTable applicants={applicants} />
+            <ApplicantTable applicants={defaultSorted} />
           </div>
 
           <div className="h-6" />
