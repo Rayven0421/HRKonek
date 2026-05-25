@@ -14,27 +14,41 @@ datasource db {
 }
 
 model Employee {
-  id               String    @id @default(uuid())
-  employeeId       String?   @unique
-  firstName        String
-  lastName         String
-  email            String    @unique
-  phone            String?
-  address          String?
-  dateOfBirth      DateTime?
-  tinNumber        String?
-  sssNumber        String?
-  philhealthNumber String?
-  pagibigNumber    String?
-  department       String
-  role             String
-  employmentType   String?   @default("Regular")
-  status           String    @default("Active") // Active, On Leave, Inactive
-  salary           Float?
-  hireDate         DateTime  @default(now())
-  profileImage     String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                  String               @id @default(uuid())
+  employeeId          String?              @unique
+  firstName           String
+  lastName            String
+  email               String               @unique
+  phone               String?
+  address             String?
+  dateOfBirth         DateTime?
+  tinNumber           String?
+  sssNumber           String?
+  philhealthNumber    String?
+  pagibigNumber       String?
+  department          String
+  role                String
+  employmentType      String?              @default("Regular")
+  status              String               @default("Active")
+  salary              Float?
+  hireDate            DateTime             @default(now())
+  profileImage        String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  contributionRecords ContributionRecord[]
+}
+
+model ContributionRecord {
+  id         String   @id @default(uuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  type       String
+  month      String
+  year       String
+  createdAt  DateTime @default(now())
+
+  @@index([employeeId])
+  @@index([month, year])
 }
 
 model Applicant {
