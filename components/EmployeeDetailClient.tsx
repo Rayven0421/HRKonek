@@ -123,8 +123,10 @@ const FORMAT_MAP: Record<string, (v: string) => string> = {
 
 export default function EmployeeDetailClient({
   employee: initialEmployee,
+  processedMonths = [],
 }: {
   employee: Employee;
+  processedMonths?: string[];
 }) {
   const [employeeData, setEmployeeData] = useState<Employee>(initialEmployee);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -161,27 +163,34 @@ export default function EmployeeDetailClient({
     !!employee.philhealthNumber ||
     !!employee.pagibigNumber;
 
+  const processedSet = new Set(processedMonths);
+
+  const getStatus = (monthLabel: string) =>
+    processedSet.has(monthLabel) ? 'Processed' : 'Pending';
+
   const printHistory = Array.from({ length: 12 }).map((_, i) => {
     const date = new Date();
     date.setMonth(date.getMonth() - i);
+    const monthLabel = date.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' });
     return {
-      month: date.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' }),
+      month: monthLabel,
       sss: employee.sssNumber ? sssMonthly : null,
       phil: employee.philhealthNumber ? philMonthly : null,
       pagi: employee.pagibigNumber ? pagibigMonthly : null,
-      status: i === 0 ? 'Pending' : 'Paid',
+      status: getStatus(monthLabel),
     };
   });
 
   const contributionHistory = Array.from({ length: 6 }).map((_, i) => {
     const date = new Date();
     date.setMonth(date.getMonth() - i);
+    const monthLabel = date.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' });
     return {
-      month: date.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' }),
+      month: monthLabel,
       sss: employee.sssNumber ? sssMonthly : null,
       phil: employee.philhealthNumber ? philMonthly : null,
       pagi: employee.pagibigNumber ? pagibigMonthly : null,
-      status: i === 0 ? 'Pending' : 'Paid',
+      status: getStatus(monthLabel),
     };
   });
 

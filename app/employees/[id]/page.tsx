@@ -15,7 +15,15 @@ export default async function EmployeeDetailPage({
   });
   if (!employee) notFound();
 
-  // Serialize dates to strings for client component
+  const records = await prisma.contributionRecord.findMany({
+    where: { employeeId: id },
+    select: { month: true, year: true, type: true },
+  });
+
+  const processedMonths = new Set(
+    records.map((r) => `${r.month} ${r.year}`)
+  );
+
   const serialized = {
     ...employee,
     hireDate: employee.hireDate.toISOString(),
@@ -24,5 +32,10 @@ export default async function EmployeeDetailPage({
     updatedAt: employee.updatedAt.toISOString(),
   };
 
-  return <EmployeeDetailClient employee={serialized} />;
+  return (
+    <EmployeeDetailClient
+      employee={serialized}
+      processedMonths={Array.from(processedMonths)}
+    />
+  );
 }
