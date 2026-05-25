@@ -88,7 +88,7 @@
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/hrkonek.git
+git clone https://github.com/Rayven0421/hrkonek.git
 cd hrkonek
 ```
 
