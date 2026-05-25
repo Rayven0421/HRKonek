@@ -14,7 +14,7 @@ export async function PATCH(
       data: { status },
     });
     return NextResponse.json(updatedApplicant);
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({ error: 'Failed to update applicant' }, { status: 500 });
   }
 }
