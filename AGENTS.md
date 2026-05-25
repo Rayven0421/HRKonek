@@ -285,12 +285,17 @@ hrkonek/
 │       ├── applicants/
 │       │   ├── [id]/route.ts       ← PATCH applicant status
 │       │   └── convert/route.ts    ← Convert applicant → employee
+│       ├── benefits/
+│       │   ├── enroll/route.ts     ← POST bulk enrollment
+│       │   └── process/route.ts    ← POST process contributions
 │       ├── apply/route.ts          ← POST job application
 │       └── upload/route.ts         ← POST file upload
 ├── components/
 │   ├── Sidebar.tsx                 ← Shared sidebar + mobile drawer
+│   ├── DashboardClient.tsx         ← Client component for dashboard
 │   ├── EmployeeTable.tsx           ← Client component with search/pagination
 │   ├── EmployeeDetailClient.tsx    ← Client component for employee detail
+│   ├── BenefitsClient.tsx          ← Client component for benefits
 │   ├── ApplicantTable.tsx          ← Client component with approve/reject
 │   ├── HireFromApplicantPanel.tsx  ← Panel to hire applicant as employee
 │   └── GrowthChart.tsx             ← recharts bar chart
