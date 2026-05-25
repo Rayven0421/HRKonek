@@ -73,23 +73,56 @@ function getBenefitProgressColor(type: BenefitType): string {
 }
 
 function downloadTableCSV(benefit: string) {
-  let data: { salaryRange: string; employeeShare: string; employerShare: string; total: string }[];
+  let data: { 
+    salaryRange: string
+    employeeShare: string
+    employerShare: string
+    total: string 
+  }[]
+
   switch (benefit) {
-    case "SSS": data = sssTableData; break;
-    case "PhilHealth": data = philhealthTableData; break;
-    case "PAG-IBIG": data = pagibigTableData; break;
-    default: return;
+    case "SSS":       data = sssTableData; break
+    case "PhilHealth": data = philhealthTableData; break
+    case "PAG-IBIG":  data = pagibigTableData; break
+    default: return
   }
-  const headers = ["Salary Range", "Employee Share", "Employer Share", "Total Contribution"];
-  const rows = data.map((r) => [r.salaryRange, r.employeeShare, r.employerShare, r.total]);
-  const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${benefit}_Contribution_Table.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+
+  const headers = [
+    "Salary Range",
+    "Employee Share", 
+    "Employer Share",
+    "Total Contribution"
+  ]
+
+  const escapeCell = (val: string) => 
+    `"${val.replace(/"/g, '""')}"`
+
+  const rows = data.map((r) => [
+    escapeCell(r.salaryRange),
+    escapeCell(r.employeeShare),
+    escapeCell(r.employerShare),
+    escapeCell(r.total),
+  ])
+
+  const csvContent = [
+    headers.map(escapeCell).join(","),
+    ...rows.map((r) => r.join(","))
+  ].join("\n")
+
+  const BOM = "\uFEFF"
+  const blob = new Blob(
+    [BOM + csvContent], 
+    { type: "text/csv;charset=utf-8;" }
+  )
+
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `${benefit}_Contribution_Table.csv`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 function ModalWrapper({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
