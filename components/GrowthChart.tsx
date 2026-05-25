@@ -2,8 +2,13 @@
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
+interface ChartDataPoint {
+  label: string;
+  count: number;
+}
+
 interface GrowthChartProps {
-  data: { month: string; count: number }[];
+  data: ChartDataPoint[];
 }
 
 export default function GrowthChart({ data }: GrowthChartProps) {
@@ -12,7 +17,7 @@ export default function GrowthChart({ data }: GrowthChartProps) {
       <BarChart data={data}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
         <XAxis 
-          dataKey="month" 
+          dataKey="label" 
           axisLine={false} 
           tickLine={false} 
           tick={{ fill: '#9ca3af', fontSize: 12 }} 
