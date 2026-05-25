@@ -265,29 +265,40 @@ Always wrap in `ResponsiveContainer` with a fixed-height parent:
 ```
 hrkonek/
 ├── app/
-│   ├── page.tsx                  ← Login
-│   ├── dashboard/page.tsx        ← Dashboard
+│   ├── page.tsx                    ← Login
+│   ├── layout.tsx                  ← Root layout
+│   ├── globals.css                 ← Tailwind globals
+│   ├── generated/prisma/           ← Prisma generated client (auto)
+│   ├── dashboard/page.tsx          ← Dashboard
 │   ├── employees/
-│   │   ├── page.tsx              ← Employee list
-│   │   ├── new/page.tsx          ← Add employee form
-│   │   └── [id]/page.tsx         ← Employee detail
-│   ├── applicants/page.tsx       ← Applicant list
-│   ├── benefits/page.tsx         ← Benefits
-│   ├── apply/page.tsx            ← Public job application form
+│   │   ├── page.tsx                ← Employee list
+│   │   ├── new/page.tsx            ← Add employee form
+│   │   └── [id]/page.tsx           ← Employee detail
+│   ├── applicants/page.tsx         ← Applicant list
+│   ├── benefits/page.tsx           ← Benefits
+│   ├── apply/page.tsx              ← Public job application form
 │   └── api/
-│       ├── employees/route.ts    ← GET/POST employees
+│       ├── employees/
+│       │   ├── route.ts            ← GET/POST employees
+│       │   ├── [id]/route.ts       ← GET/PATCH/DELETE employee
+│       │   └── count/route.ts      ← GET employee count
 │       ├── applicants/
-│       │   └── [id]/route.ts     ← PATCH applicant status
-│       └── apply/route.ts        ← POST job application
+│       │   ├── [id]/route.ts       ← PATCH applicant status
+│       │   └── convert/route.ts    ← Convert applicant → employee
+│       ├── apply/route.ts          ← POST job application
+│       └── upload/route.ts         ← POST file upload
 ├── components/
-│   ├── Sidebar.tsx               ← Shared sidebar + mobile drawer
-│   ├── EmployeeTable.tsx         ← Client component with search/pagination
-│   ├── ApplicantTable.tsx        ← Client component with approve/reject
-│   └── GrowthChart.tsx           ← recharts bar chart
+│   ├── Sidebar.tsx                 ← Shared sidebar + mobile drawer
+│   ├── EmployeeTable.tsx           ← Client component with search/pagination
+│   ├── EmployeeDetailClient.tsx    ← Client component for employee detail
+│   ├── ApplicantTable.tsx          ← Client component with approve/reject
+│   ├── HireFromApplicantPanel.tsx  ← Panel to hire applicant as employee
+│   └── GrowthChart.tsx             ← recharts bar chart
 ├── lib/
-│   └── prisma.ts                 ← Prisma singleton
+│   └── prisma.ts                   ← Prisma singleton
 └── prisma/
     ├── schema.prisma
+    ├── prisma.config.ts
     └── dev.db
 ```
 
