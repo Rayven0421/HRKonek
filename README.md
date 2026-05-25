@@ -157,12 +157,17 @@ hrkonek/
 │   └── api/
 │       ├── employees/                 Employee CRUD API
 │       ├── applicants/                Applicant status API
+│       ├── benefits/
+│       │   ├── enroll/                Bulk enrollment
+│       │   └── process/               Process contributions
 │       ├── apply/                     Job application submission
 │       └── upload/                    File upload handler
 ├── components/
 │   ├── Sidebar.tsx                    Navigation sidebar (desktop + mobile)
+│   ├── DashboardClient.tsx            Dashboard client component
 │   ├── EmployeeTable.tsx              Employee data table
 │   ├── EmployeeDetailClient.tsx       Employee detail view
+│   ├── BenefitsClient.tsx             Benefits client component
 │   ├── ApplicantTable.tsx             Applicant data table
 │   ├── HireFromApplicantPanel.tsx     Convert applicant to employee
 │   └── GrowthChart.tsx                Employee growth chart
