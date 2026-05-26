@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from '@/app/generated/prisma/client'
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -34,21 +35,28 @@ export async function POST(req: Request) {
     }
 
     // 3. Unique Email Check
-    const existingEmployee = await prisma.employee.findUnique({ where: { email } });
+    /* SQL: Check if email already exists (unique constraint) */
+    const existingRows = await prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM Employee
+      WHERE email = ${email}
+      LIMIT 1`
+    const existingEmployee = existingRows[0] ?? null
     if (existingEmployee) {
       return NextResponse.json({ error: "Email already registered to another employee" }, { status: 400 });
     }
 
     // 4. Autogenerate Unique Employee ID (E001, E002...)
-    // We fetch all employeeIds to find the highest one, ensuring no reuse even after deletions
-    const employees = await prisma.employee.findMany({
-      select: { employeeId: true },
-      orderBy: { employeeId: 'desc' },
-    });
+    /* SQL: Get highest employee ID for auto-increment display ID generation */
+    const lastEmployeeRows = await prisma.$queryRaw<Array<{ employeeId: string | null }>>`
+      SELECT employeeId FROM Employee
+      WHERE employeeId IS NOT NULL
+      ORDER BY employeeId DESC
+      LIMIT 1
+    `
 
     let nextIdNumber = 1;
-    if (employees.length > 0) {
-      const lastId = employees[0].employeeId;
+    if (lastEmployeeRows.length > 0) {
+      const lastId = lastEmployeeRows[0].employeeId;
       if (lastId && lastId.startsWith('E')) {
         const lastNumber = parseInt(lastId.substring(1));
         if (!isNaN(lastNumber)) {
@@ -59,21 +67,51 @@ export async function POST(req: Request) {
     const generatedEmployeeId = `E${nextIdNumber.toString().padStart(3, '0')}`;
 
     // 5. Create Employee
-    const employee = await prisma.employee.create({
-      data: {
-        firstName,
-        lastName,
-        email,
-        phone,
-        address,
-        employeeId: generatedEmployeeId,
-        department,
-        role,
-        status,
-        salary: salary ? parseFloat(salary) : null,
-        hireDate: new Date(hireDate),
-      },
-    });
+    /* SQL: Insert new employee record */
+    const newEmployeeId = crypto.randomUUID()
+    await prisma.$executeRaw`
+      INSERT INTO Employee (
+        id, firstName, lastName, email, phone, address,
+        employeeId, department, role, status,
+        salary, hireDate, createdAt, updatedAt
+      ) VALUES (
+        ${newEmployeeId},
+        ${firstName},
+        ${lastName},
+        ${email},
+        ${phone ?? null},
+        ${address ?? null},
+        ${generatedEmployeeId},
+        ${department},
+        ${role},
+        ${status ?? 'Active'},
+        ${salary ? parseFloat(salary) : null},
+        ${hireDate ? new Date(hireDate).toISOString() : new Date().toISOString()},
+        ${new Date().toISOString()},
+        ${new Date().toISOString()}
+      )
+    `
+
+    /* SQL: Retrieve the newly created employee */
+    const newEmployeeRows = await prisma.$queryRaw<Array<{
+      id: string; firstName: string; lastName: string;
+      email: string; phone: string | null;
+      address: string | null; department: string;
+      role: string; status: string; salary: number | null;
+      hireDate: Date; employeeId: string | null;
+      dateOfBirth: Date | null; tinNumber: string | null;
+      sssNumber: string | null;
+      philhealthNumber: string | null;
+      pagibigNumber: string | null;
+      employmentType: string | null;
+      profileImage: string | null;
+      createdAt: Date; updatedAt: Date;
+    }>>`
+      SELECT * FROM Employee
+      WHERE id = ${newEmployeeId}
+      LIMIT 1
+    `
+    const employee = newEmployeeRows[0]
 
     return NextResponse.json(employee, { status: 201 });
   } catch (error) {

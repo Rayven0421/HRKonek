@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from '@/app/generated/prisma/client'
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -19,32 +20,56 @@ export async function POST(request: Request) {
       );
     }
 
-    const employees = await prisma.employee.findMany({
-      select: {
-        id: true,
-        sssNumber: true,
-        philhealthNumber: true,
-        pagibigNumber: true,
-      },
-      where: { status: "Active" },
-    });
+    /* SQL: Get all active employees with gov benefit IDs */
+    const activeEmployees = await prisma.$queryRaw<Array<{
+      id: string;
+      sssNumber: string | null;
+      philhealthNumber: string | null;
+      pagibigNumber: string | null;
+    }>>`
+      SELECT id, sssNumber, philhealthNumber, pagibigNumber
+      FROM Employee
+      WHERE status = 'Active'
+    `
 
-    const records: { employeeId: string; type: string; month: string; year: string }[] = [];
+    /* SQL: Check for duplicate — same month/year already processed */
+    const duplicateCheck = await prisma.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(*) as count
+      FROM ContributionRecord
+      WHERE month = ${month}
+      AND   year  = ${year}
+    `
 
-    for (const emp of employees) {
-      if (benefits.sss && emp.sssNumber) {
-        records.push({ employeeId: emp.id, type: "SSS", month, year });
-      }
-      if (benefits.philhealth && emp.philhealthNumber) {
-        records.push({ employeeId: emp.id, type: "PhilHealth", month, year });
-      }
-      if (benefits.pagibig && emp.pagibigNumber) {
-        records.push({ employeeId: emp.id, type: "PAG-IBIG", month, year });
-      }
+    if (Number(duplicateCheck[0].count) > 0) {
+      return NextResponse.json({
+        message: `Contributions for ${month} ${year} have already been processed.`
+      }, { status: 409 })
     }
 
-    if (records.length > 0) {
-      await prisma.contributionRecord.createMany({ data: records });
+    /* SQL: Bulk insert contribution records for all active enrolled employees */
+    let recordsCreated = 0
+    for (const emp of activeEmployees) {
+      if (benefits.sss && emp.sssNumber) {
+        await prisma.$executeRaw`
+          INSERT INTO ContributionRecord (id, employeeId, type, month, year, createdAt)
+          VALUES (${crypto.randomUUID()}, ${emp.id}, 'SSS', ${month}, ${year}, ${new Date().toISOString()})
+        `
+        recordsCreated++
+      }
+      if (benefits.philhealth && emp.philhealthNumber) {
+        await prisma.$executeRaw`
+          INSERT INTO ContributionRecord (id, employeeId, type, month, year, createdAt)
+          VALUES (${crypto.randomUUID()}, ${emp.id}, 'PhilHealth', ${month}, ${year}, ${new Date().toISOString()})
+        `
+        recordsCreated++
+      }
+      if (benefits.pagibig && emp.pagibigNumber) {
+        await prisma.$executeRaw`
+          INSERT INTO ContributionRecord (id, employeeId, type, month, year, createdAt)
+          VALUES (${crypto.randomUUID()}, ${emp.id}, 'PAG-IBIG', ${month}, ${year}, ${new Date().toISOString()})
+        `
+        recordsCreated++
+      }
     }
 
     return NextResponse.json({
@@ -55,7 +80,7 @@ export async function POST(request: Request) {
         philhealth: benefits.philhealth ? totals?.philhealth : null,
         pagibig: benefits.pagibig ? totals?.pagibig : null,
       },
-      recordsCreated: records.length,
+      recordsCreated,
     });
   } catch (err) {
     console.error("Process contributions error:", err);

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from '@/app/generated/prisma/client'
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -13,14 +14,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const employees = await prisma.employee.findMany({
-      select: {
-        id: true,
-        sssNumber: true,
-        philhealthNumber: true,
-        pagibigNumber: true,
-      },
-    });
+    /* SQL: Get all employee benefit enrollment status */
+    const employees = await prisma.$queryRaw<Array<{
+      id: string;
+      sssNumber: string | null;
+      philhealthNumber: string | null;
+      pagibigNumber: string | null;
+    }>>`
+      SELECT id, sssNumber, philhealthNumber, pagibigNumber
+      FROM Employee
+    `
 
     let targets = employees;
     if (scope === "new") {
@@ -51,10 +54,31 @@ export async function POST(request: Request) {
         updateData.pagibigNumber = `PI-PENDING-${emp.id.slice(0, 6).toUpperCase()}`;
 
       if (Object.keys(updateData).length > 0) {
-        await prisma.employee.update({
-          where: { id: emp.id },
-          data: updateData,
-        });
+        /* SQL: Update government benefit IDs for employee */
+        if (benefits?.sss && !emp.sssNumber) {
+          await prisma.$executeRaw`
+            UPDATE Employee
+            SET sssNumber = ${`SSS-PENDING-${emp.id.slice(0,6).toUpperCase()}`},
+                updatedAt = ${new Date().toISOString()}
+            WHERE id = ${emp.id}
+          `
+        }
+        if (benefits?.philhealth && !emp.philhealthNumber) {
+          await prisma.$executeRaw`
+            UPDATE Employee
+            SET philhealthNumber = ${`PH-PENDING-${emp.id.slice(0,6).toUpperCase()}`},
+                updatedAt = ${new Date().toISOString()}
+            WHERE id = ${emp.id}
+          `
+        }
+        if (benefits?.pagibig && !emp.pagibigNumber) {
+          await prisma.$executeRaw`
+            UPDATE Employee
+            SET pagibigNumber = ${`PI-PENDING-${emp.id.slice(0,6).toUpperCase()}`},
+                updatedAt = ${new Date().toISOString()}
+            WHERE id = ${emp.id}
+          `
+        }
         enrolled++;
       }
     }

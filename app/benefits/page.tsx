@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from '@/app/generated/prisma/client'
 import BenefitsClient from "@/components/BenefitsClient";
 
 export const dynamic = "force-dynamic";
@@ -43,20 +44,20 @@ type Transaction = {
 };
 
 async function getBenefitsData() {
-  const employees = await prisma.employee.findMany({
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      salary: true,
-      status: true,
-      sssNumber: true,
-      philhealthNumber: true,
-      pagibigNumber: true,
-      hireDate: true,
-      createdAt: true,
-    },
-  });
+  /* SQL: Get all employee benefit enrollment data */
+  const employees = await prisma.$queryRaw<Array<{
+    id: string; firstName: string; lastName: string;
+    salary: number | null; status: string;
+    sssNumber: string | null;
+    philhealthNumber: string | null;
+    pagibigNumber: string | null;
+    hireDate: Date | null; createdAt: Date;
+  }>>`
+    SELECT id, firstName, lastName, salary, status,
+           sssNumber, philhealthNumber, pagibigNumber,
+           hireDate, createdAt
+    FROM Employee
+  `
 
   const totalEmployees = employees.length;
   const activeEmployees = employees.filter((e) => e.status === "Active").length;
@@ -83,27 +84,33 @@ async function getBenefitsData() {
     .filter((e) => e.pagibigNumber && e.status === "Active")
     .reduce((sum, e) => sum + computePagibig(e.salary), 0);
 
-  const recentHires = await prisma.employee.findMany({
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      salary: true,
-      sssNumber: true,
-      philhealthNumber: true,
-      pagibigNumber: true,
-      hireDate: true,
-      createdAt: true,
-    },
-    orderBy: { hireDate: "desc" },
-    take: 8,
-  });
+  /* SQL: Get 8 most recently hired employees for recent transactions panel */
+  const recentHires = await prisma.$queryRaw<Array<{
+    id: string; firstName: string; lastName: string;
+    salary: number | null;
+    sssNumber: string | null;
+    philhealthNumber: string | null;
+    pagibigNumber: string | null;
+    hireDate: Date | null; createdAt: Date;
+  }>>`
+    SELECT id, firstName, lastName, salary,
+           sssNumber, philhealthNumber, pagibigNumber,
+           hireDate, createdAt
+    FROM Employee
+    ORDER BY hireDate DESC
+    LIMIT 8
+  `
 
   const recentIds = recentHires.map((e) => e.id);
-  const processedRecords = await prisma.contributionRecord.findMany({
-    where: { employeeId: { in: recentIds } },
-    select: { employeeId: true, type: true },
-  });
+
+  /* SQL: Get contribution processing status for recent hires */
+  const processedRecords = recentIds.length > 0
+    ? await prisma.$queryRaw<Array<{ employeeId: string; type: string }>>`
+        SELECT employeeId, type
+        FROM ContributionRecord
+        WHERE employeeId IN (${Prisma.join(recentIds)})
+      `
+    : []
   const processedSet = new Set(
     processedRecords.map((r) => `${r.employeeId}:${r.type}`)
   );

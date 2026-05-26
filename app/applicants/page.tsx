@@ -1,15 +1,37 @@
 export const dynamic = 'force-dynamic';
 
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@/app/generated/prisma/client'
 import Sidebar from '@/components/Sidebar';
 import ApplicantTable from '@/components/ApplicantTable';
 import { Bell, UserCircle, FileText } from 'lucide-react';
 
 export default async function ApplicantsPage() {
   // ── Fetch oldest-first so index 0 = A001 (stable, chronological IDs) ──────
-  const rawApplicants = await prisma.applicant.findMany({
-    orderBy: { appliedAt: 'asc' },
-  });
+  /* SQL: Get all applicants ordered by application date
+     ascending for stable ID assignment (A001 = oldest) */
+  const rawApplicants = await prisma.$queryRaw<Array<{
+    id: string; firstName: string; lastName: string;
+    email: string | null; phone: string | null;
+    address: string | null; position: string;
+    expectedSalary: string | null;
+    yearsOfExperience: string | null;
+    sssNumber: string | null; pagibigNumber: string | null;
+    philhealthNumber: string | null; tinNumber: string | null;
+    resumeUrl: string | null; coverLetterUrl: string | null;
+    otherDocsUrl: string | null; status: string;
+    appliedAt: Date; createdAt: Date;
+    convertedEmployeeId: string | null;
+  }>>`
+    SELECT id, firstName, lastName, email, phone,
+           address, position, expectedSalary,
+           yearsOfExperience, sssNumber, pagibigNumber,
+           philhealthNumber, tinNumber, resumeUrl,
+           coverLetterUrl, otherDocsUrl, status,
+           appliedAt, createdAt, convertedEmployeeId
+    FROM Applicant
+    ORDER BY appliedAt ASC
+  `
 
   // Assign stable IDs based on insertion/application order, not display order
   const applicants = rawApplicants.map((a, index) => ({

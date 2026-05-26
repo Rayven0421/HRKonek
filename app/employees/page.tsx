@@ -1,15 +1,28 @@
 import Sidebar from "@/components/Sidebar";
 import EmployeeTable from "@/components/EmployeeTable";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from '@/app/generated/prisma/client'
 import Link from "next/link";
 import { Bell, UserCircle, Plus } from "lucide-react";
 
 export const dynamic = 'force-dynamic';
 
 export default async function EmployeesPage() {
-  const employees = await prisma.employee.findMany({
-    orderBy: { createdAt: 'desc' },
-  });
+  /* SQL: Get all employees for employee management table */
+  const employees = await prisma.$queryRaw<Array<{
+    id: string; firstName: string; lastName: string;
+    email: string; phone: string | null;
+    department: string; role: string; status: string;
+    hireDate: Date; salary: number | null;
+    address: string | null; employeeId: string | null;
+    createdAt: Date;
+  }>>`
+    SELECT id, firstName, lastName, email, phone,
+           department, role, status, hireDate,
+           salary, address, employeeId, createdAt
+    FROM Employee
+    ORDER BY createdAt DESC
+  `
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
