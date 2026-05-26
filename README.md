@@ -76,12 +76,60 @@
 
 ---
 
-## Prerequisites
+## Requirements
 
-- **Node.js** 18.17 or later
-- **npm** (comes with Node.js)
+| Requirement | Version | Notes |
+|---|---|---|
+| **Node.js** | 18.17+ (v24.16.0 tested) | [Download](https://nodejs.org) |
+| **npm** | Comes with Node.js | Use `npm`, not yarn/pnpm |
+| **Operating System** | Windows / macOS / Linux | Fully cross-platform |
+| **Database** | None (SQLite built-in) | No external DB server needed |
+| **Disk Space** | ~500 MB | node_modules + project files |
 
 ---
+
+## Full Setup Commands (New PC)
+
+Copy and paste these commands in order:
+
+```bash
+# 1. Install Node.js (if not installed)
+#    Download from https://nodejs.org (v18.17+)
+
+# 2. Clone the repository
+git clone https://github.com/Rayven0421/hrkonek.git
+cd hrkonek
+
+# 3. Install all dependencies
+npm install
+
+# 4. [IMPORTANT] Update .env file — edit the DATABASE_URL path
+#    Open .env in a text editor and change:
+#      DATABASE_URL="file:C:/Your/Actual/Path/hrkonek/prisma/dev.db"
+#    Make sure the path matches where you placed the project folder.
+
+# 5. Generate the Prisma client
+npx prisma generate
+
+# 6. Push schema to database (creates tables if missing)
+npx prisma db push
+
+# 7. Start the development server
+npm run dev
+```
+
+> **Note**: If you want the existing sample data, copy the `prisma/dev.db` file from the original project. Without it, you'll start with an empty database.
+
+---
+
+## Running the Project
+
+```bash
+npm run dev        # Development server → http://localhost:3000
+npm run build      # Production build
+npm start          # Production server
+npm run lint       # Run ESLint
+```
 
 ## Getting Started
 
