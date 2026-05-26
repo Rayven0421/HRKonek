@@ -55,6 +55,46 @@ export default async function DashboardPage() {
     ORDER BY appliedAt DESC
   `
 
+  let activeBenefits = 0
+  let benefitsTrend: number | null = null
+
+  try {
+    const activeBenefitsResult = await prisma.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(*) as count FROM Employee
+      WHERE status = 'Active'
+      AND (
+        (sssNumber IS NOT NULL AND sssNumber != '') OR
+        (philhealthNumber IS NOT NULL AND philhealthNumber != '') OR
+        (pagibigNumber IS NOT NULL AND pagibigNumber != '')
+      )
+    `
+    activeBenefits = Number(activeBenefitsResult[0].count)
+
+    const thisMonthStart = new Date()
+    thisMonthStart.setDate(1)
+    thisMonthStart.setHours(0, 0, 0, 0)
+
+    const lastMonthBenefitsResult = await prisma.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(*) as count FROM Employee
+      WHERE status = 'Active'
+      AND hireDate < ${thisMonthStart.toISOString()}
+      AND (
+        (sssNumber IS NOT NULL AND sssNumber != '') OR
+        (philhealthNumber IS NOT NULL AND philhealthNumber != '') OR
+        (pagibigNumber IS NOT NULL AND pagibigNumber != '')
+      )
+    `
+    const lastMonthBenefits = Number(lastMonthBenefitsResult[0].count)
+
+    benefitsTrend = lastMonthBenefits === 0
+      ? null
+      : Math.round(((activeBenefits - lastMonthBenefits) / lastMonthBenefits) * 100)
+  } catch (error) {
+    console.error('Benefits count error:', error)
+    activeBenefits = 0
+    benefitsTrend = null
+  }
+
   return (
     <DashboardClient
       totalEmployees={totalEmployees}
@@ -62,6 +102,8 @@ export default async function DashboardPage() {
       recentEmployees={JSON.parse(JSON.stringify(recentEmployees))}
       allEmployees={JSON.parse(JSON.stringify(allEmployees))}
       allApplicants={JSON.parse(JSON.stringify(allApplicants))}
+      activeBenefits={activeBenefits}
+      benefitsTrend={benefitsTrend}
     />
   );
 }

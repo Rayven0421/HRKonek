@@ -6,7 +6,7 @@ import GrowthChart from "@/components/GrowthChart";
 import Sidebar from "@/components/Sidebar";
 import {
   Bell, UserCircle, Users, Award, ClipboardList,
-  Plus, TrendingUp, FileText, Calendar, Download,
+  Plus, TrendingUp, TrendingDown, FileText, Calendar, Download,
   Database, CheckCircle, AlertCircle, X, Loader2
 } from "lucide-react";
 
@@ -38,6 +38,8 @@ interface DashboardClientProps {
   recentEmployees: RecentEmployee[];
   allEmployees: EmployeeSummary[];
   allApplicants: ApplicantSummary[];
+  activeBenefits: number;
+  benefitsTrend: number | null;
 }
 
 type ToastData = {
@@ -48,7 +50,8 @@ type ToastData = {
 
 export default function DashboardClient({
   totalEmployees, pendingTasks,
-  recentEmployees, allEmployees, allApplicants
+  recentEmployees, allEmployees, allApplicants,
+  activeBenefits, benefitsTrend
 }: DashboardClientProps) {
   const [chartView, setChartView] = useState<ChartView>("month");
   const [showGenerateReport, setShowGenerateReport] = useState(false);
@@ -473,10 +476,31 @@ export default function DashboardClient({
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5 flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Active Benefits</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">0</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{activeBenefits}</p>
                 <div className="flex items-center gap-1 mt-2">
-                  <TrendingUp className="w-3.5 h-3.5 text-green-500" />
-                  <span className="text-xs text-green-600 font-medium">+8% from last month</span>
+                  {benefitsTrend === null ? (
+                    <>
+                      <Award className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="text-xs text-gray-400 font-medium">
+                        {activeBenefits === 0 ? "No enrollments yet" : "No previous data"}
+                      </span>
+                    </>
+                  ) : benefitsTrend > 0 ? (
+                    <>
+                      <TrendingUp className="w-3.5 h-3.5 text-green-500" />
+                      <span className="text-xs text-green-600 font-medium">+{benefitsTrend}% from last month</span>
+                    </>
+                  ) : benefitsTrend < 0 ? (
+                    <>
+                      <TrendingDown className="w-3.5 h-3.5 text-red-500" />
+                      <span className="text-xs text-red-500 font-medium">{benefitsTrend}% from last month</span>
+                    </>
+                  ) : (
+                    <>
+                      <Award className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="text-xs text-gray-500 font-medium">No change from last month</span>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0">

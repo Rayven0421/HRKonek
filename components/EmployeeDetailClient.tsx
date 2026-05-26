@@ -115,10 +115,18 @@ function formatPagibig(val: string) {
   return `${digits.slice(0, 4)}-${digits.slice(4, 8)}-${digits.slice(8)}`;
 }
 
+function formatPhilhealth(val: string) {
+  const digits = val.replace(/\D/g, '').slice(0, 12);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 11) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}-${digits.slice(2, 11)}-${digits.slice(11)}`;
+}
+
 const FORMAT_MAP: Record<string, (v: string) => string> = {
   sssNumber: formatSSS,
   tinNumber: formatTIN,
   pagibigNumber: formatPagibig,
+  philhealthNumber: formatPhilhealth,
 };
 
 export default function EmployeeDetailClient({

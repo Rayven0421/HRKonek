@@ -51,12 +51,12 @@ function fmtSSS(raw: string): string {
   return `${d.slice(0, 2)}-${d.slice(2, 9)}-${d.slice(9)}`;
 }
 
-/** PhilHealth PIN: ####-####-#### (12 digits, 4-4-4) */
+/** PhilHealth PIN: XX-XXXXXXXXX-X (12 digits, 2-9-1) */
 function fmtPhilHealth(raw: string): string {
   const d = raw.replace(/\D/g, '').slice(0, 12);
-  if (d.length <= 4) return d;
-  if (d.length <= 8) return `${d.slice(0, 4)}-${d.slice(4)}`;
-  return `${d.slice(0, 4)}-${d.slice(4, 8)}-${d.slice(8)}`;
+  if (d.length <= 2) return d;
+  if (d.length <= 11) return `${d.slice(0, 2)}-${d.slice(2)}`;
+  return `${d.slice(0, 2)}-${d.slice(2, 11)}-${d.slice(11)}`;
 }
 
 /** Pag-IBIG MID: ####-####-#### (12 digits, 4-4-4) */
@@ -121,7 +121,7 @@ function validateSSS(val: string): string | null {
 function validatePhilHealth(val: string): string | null {
   const d = val.replace(/\D/g, '');
   if (!d) return null;
-  if (d.length !== 12) return 'PhilHealth PIN must be 12 digits (####-####-####).';
+  if (d.length !== 12) return 'PhilHealth PIN must be 12 digits (XX-XXXXXXXXX-X).';
   return null;
 }
 
