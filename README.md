@@ -4,13 +4,14 @@
 
 <h1 align="center">HRKonek</h1>
 <p align="center">
-  <strong>A modern Human Resource Information System built with Next.js</strong>
+  <strong>A modern Human Resource Information System built with Next.js 15</strong>
   <br />
-  Employee management · Applicant tracking · Benefits administration
+  Employee management · Applicant tracking · Benefits administration · Notifications
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Next.js-15-black" alt="Next.js 15" />
+  <img src="https://img.shields.io/badge/React-19-blue" alt="React 19" />
   <img src="https://img.shields.io/badge/TypeScript-5-blue" alt="TypeScript 5" />
   <img src="https://img.shields.io/badge/Prisma-6-2D3748" alt="Prisma 6" />
   <img src="https://img.shields.io/badge/SQLite-3-003B57" alt="SQLite" />
@@ -22,44 +23,58 @@
 
 ## Overview
 
-**HRKonek** is a full-featured Human Resource Information System (HRIS) designed for Philippine-based organizations. It streamlines HR operations with modules for employee record management, applicant tracking, government-mandated benefits administration (SSS, PhilHealth, PAG-IBIG), and a public job application portal.
+**HRKonek** is a full-featured Human Resource Information System (HRIS) designed for Philippine-based organizations. It streamlines HR operations with modules for employee record management, applicant tracking, government-mandated benefits administration (SSS, PhilHealth, PAG-IBIG), a public job application portal, and a built-in notification system.
 
 ---
 
 ## Features
 
 ### Dashboard
-- Key metrics at a glance (total employees, pending tasks, benefit summaries)
-- Employee growth chart (6-month trend)
-- Recent activity feed
-- Quick actions (add employee, generate report, export data)
+- Key metrics at a glance (total employees, active/inactive/on-leave counts)
+- Employee growth chart (6-month trend via recharts)
+- Recent notifications feed
+- Quick actions (add employee, manage applicants)
 
 ### Employee Management
-- Complete employee database with search and pagination
-- Add employees with detailed profile (government IDs, employment type, salary)
+- Complete employee database with search, filter, and pagination
+- Add employees with detailed profile (government IDs, employment type, salary, profile image)
 - Employee detail view with full profile information
 - Employee status tracking (Active, On Leave, Inactive)
+- Archive/restore employees with reason notes
 
 ### Applicant Tracking
-- View and manage job applicants
+- View and manage job applicants with search and pagination
 - Status workflow: Applied → Under Review → Interview Scheduled → Pending Review → Hired / Rejected
 - Approve/reject actions with status updates
 - Convert applicants directly to employees
+- Archive applicants with reason tracking
+- Dedicated archived applicants view
 
 ### Benefits Administration
-- **SSS** (Social Security System) — contribution table, enrollment tracking
-- **PhilHealth** — premium schedules and enrollment
+- **SSS** (Social Security System) — contribution table with PDF export
+- **PhilHealth** — premium schedules
 - **PAG-IBIG Fund** — housing contribution management
-- Contribution table viewer with CSV export
-- Process monthly contributions
+- Process monthly contributions per employee
 - Bulk enrollment management
-- Adjustable benefit rates
+- Contribution transaction history
+
+### Notifications
+- Real-time in-app notification bell
+- Notification read/unread tracking
+- Mark all as read functionality
+- Clear static notifications
 
 ### Public Job Application Portal
 - Online application form for job seekers
 - Philippine government ID number formatting (SSS, PhilHealth, Pag-IBIG, TIN)
 - File upload support (resume, cover letter, documents)
 - Client-side validation with real-time feedback
+
+### Authentication & Admin
+- Admin login with session-based authentication
+- Admin profile page
+- Admin settings page
+- Secure password hashing
 
 ---
 
@@ -73,6 +88,7 @@
 | **Database** | SQLite (via Prisma 6) |
 | **Icons** | lucide-react |
 | **Charts** | recharts |
+| **PDF** | jsPDF + jspdf-autotable |
 
 ---
 
@@ -88,37 +104,28 @@
 
 ---
 
-## Full Setup Commands (New PC)
-
-Copy and paste these commands in order:
+## Quick Setup
 
 ```bash
-# 1. Install Node.js (if not installed)
-#    Download from https://nodejs.org (v18.17+)
-
-# 2. Clone the repository
+# 1. Clone the repository
 git clone https://github.com/Rayven0421/hrkonek.git
 cd hrkonek
 
-# 3. Install all dependencies
+# 2. Install dependencies
 npm install
 
-# 4. [IMPORTANT] Update .env file — edit the DATABASE_URL path
-#    Open .env in a text editor and change:
-#      DATABASE_URL="file:C:/Your/Actual/Path/hrkonek/prisma/dev.db"
-#    Make sure the path matches where you placed the project folder.
+# 3. Update .env — edit DATABASE_URL to match your absolute project path
+#    DATABASE_URL="file:C:/Your/Actual/Path/hrkonek/prisma/dev.db"
 
-# 5. Generate the Prisma client
+# 4. Generate Prisma client and push schema
 npx prisma generate
-
-# 6. Push schema to database (creates tables if missing)
 npx prisma db push
 
-# 7. Start the development server
+# 5. Start the development server
 npm run dev
 ```
 
-> **Note**: If you want the existing sample data, copy the `prisma/dev.db` file from the original project. Without it, you'll start with an empty database.
+Open [http://localhost:3000](http://localhost:3000) and log in with the admin credentials. If no admin user exists, run the seed endpoint or register via the app.
 
 ---
 
@@ -131,59 +138,6 @@ npm start          # Production server
 npm run lint       # Run ESLint
 ```
 
-## Getting Started
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/Rayven0421/hrkonek.git
-cd hrkonek
-```
-
-### 2. Install dependencies
-
-```bash
-npm install
-```
-
-### 3. Set up environment variables
-
-The project includes a `.env` file configured for local SQLite. Ensure it contains:
-
-```env
-DATABASE_URL="file:C:/path/to/your/project/prisma/dev.db"
-```
-
-Adjust the path to match your absolute project location.
-
-### 4. Generate the Prisma client and push the schema
-
-```bash
-npx prisma generate
-npx prisma db push
-```
-
-### 5. Run the development server
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-### 6. Login
-
-Click **Login to HR Portal** on the login page to access the dashboard (authentication is a placeholder).
-
----
-
-## Build & Production
-
-```bash
-npm run build
-npm start
-```
-
 ---
 
 ## Project Structure
@@ -191,68 +145,120 @@ npm start
 ```
 hrkonek/
 ├── app/
-│   ├── page.tsx                       Login page
-│   ├── layout.tsx                     Root layout
-│   ├── globals.css                    Tailwind globals
-│   ├── dashboard/page.tsx             Dashboard overview
+│   ├── page.tsx                           Login page
+│   ├── layout.tsx                         Root layout
+│   ├── globals.css                        Tailwind globals
+│   ├── favicon.ico
+│   ├── admin/
+│   │   ├── profile/page.tsx               Admin profile
+│   │   └── settings/page.tsx              Admin settings
+│   ├── applicants/
+│   │   ├── page.tsx                       Applicant list
+│   │   ├── loading.tsx
+│   │   └── archive/page.tsx               Archived applicants
+│   ├── apply/page.tsx                     Public job application form
+│   ├── benefits/
+│   │   ├── page.tsx                       Benefits management
+│   │   └── loading.tsx
+│   ├── dashboard/
+│   │   ├── page.tsx                       Dashboard overview
+│   │   └── loading.tsx
 │   ├── employees/
-│   │   ├── page.tsx                   Employee list
-│   │   ├── new/page.tsx               Add employee form
-│   │   └── [id]/page.tsx              Employee detail
-│   ├── applicants/page.tsx            Applicant list
-│   ├── benefits/page.tsx              Benefits management
-│   ├── apply/page.tsx                 Public job application
-│   └── api/
-│       ├── employees/                 Employee CRUD API
-│       ├── applicants/                Applicant status API
-│       ├── benefits/
-│       │   ├── enroll/                Bulk enrollment
-│       │   └── process/               Process contributions
-│       ├── apply/                     Job application submission
-│       └── upload/                    File upload handler
+│   │   ├── page.tsx                       Employee list
+│   │   ├── loading.tsx
+│   │   ├── [id]/page.tsx                  Employee detail
+│   │   ├── [id]/loading.tsx
+│   │   ├── new/page.tsx                   Add employee form
+│   │   └── archive/page.tsx               Archived employees
+│   ├── api/
+│   │   ├── applicants/
+│   │   │   ├── route.ts                   GET/POST applicants
+│   │   │   ├── [id]/route.ts              PATCH applicant status
+│   │   │   ├── [id]/archive/route.ts      Archive/restore applicant
+│   │   │   └── convert/route.ts           Convert applicant → employee
+│   │   ├── apply/route.ts                 POST job application
+│   │   ├── auth/
+│   │   │   ├── login/route.ts             POST login
+│   │   │   ├── logout/route.ts            POST logout
+│   │   │   └── me/route.ts                GET current user
+│   │   ├── benefits/
+│   │   │   ├── enroll/route.ts            POST bulk enrollment
+│   │   │   ├── process/route.ts           POST process contributions
+│   │   │   └── transactions/route.ts      GET contribution history
+│   │   ├── employees/
+│   │   │   ├── route.ts                   GET/POST employees
+│   │   │   ├── [id]/route.ts              GET/PATCH/DELETE employee
+│   │   │   ├── [id]/archive/route.ts      Archive/restore employee
+│   │   │   └── count/route.ts             GET employee count
+│   │   ├── notifications/
+│   │   │   ├── route.ts                   GET notifications
+│   │   │   ├── [id]/route.ts              PATCH notification read
+│   │   │   ├── read-all/route.ts          POST mark all read
+│   │   │   └── clear-static/route.ts      POST clear static notifications
+│   │   ├── seed/route.ts                  POST seed database
+│   │   └── upload/route.ts                POST file upload
+│   └── generated/prisma/                  Prisma generated client (auto)
 ├── components/
-│   ├── Sidebar.tsx                    Navigation sidebar (desktop + mobile)
-│   ├── DashboardClient.tsx            Dashboard client component
-│   ├── EmployeeTable.tsx              Employee data table
-│   ├── EmployeeDetailClient.tsx       Employee detail view
-│   ├── BenefitsClient.tsx             Benefits client component
-│   ├── ApplicantTable.tsx             Applicant data table
-│   ├── HireFromApplicantPanel.tsx     Convert applicant to employee
-│   └── GrowthChart.tsx                Employee growth chart
+│   ├── Sidebar.tsx                        Navigation sidebar (desktop + mobile)
+│   ├── NavbarUserMenu.tsx                 User dropdown menu
+│   ├── NotificationBell.tsx               Notification bell with badge
+│   ├── DashboardClient.tsx                Dashboard client component
+│   ├── EmployeeTable.tsx                  Employee data table
+│   ├── EmployeeDetailClient.tsx           Employee detail view
+│   ├── ApplicantTable.tsx                 Applicant data table
+│   ├── ApplicantArchiveClient.tsx         Archived applicant list
+│   ├── BenefitsClient.tsx                 Benefits client component
+│   ├── HireFromApplicantPanel.tsx         Convert applicant to employee
+│   ├── GrowthChart.tsx                    Employee growth chart (recharts)
+│   └── SearchableSelect.tsx               Searchable dropdown select
 ├── lib/
-│   └── prisma.ts                      Prisma client singleton
+│   ├── prisma.ts                          Prisma client singleton
+│   ├── auth.ts                            Authentication helpers
+│   ├── constants.ts                       App constants & enums
+│   ├── notifications.ts                   Notification helpers
+│   └── sanitize.ts                        Input sanitization
 ├── prisma/
-│   ├── schema.prisma                  Database schema
-│   └── dev.db                         SQLite database file
-└── public/uploads/                    Uploaded documents
+│   ├── schema.prisma                      Database schema
+│   ├── dev.db                             SQLite database file
+│   ├── migrations_init.sql                Initial migration SQL
+│   └── migrations/
+│       ├── migration_lock.toml
+│       └── 202605*/migration.sql          Migration history
+├── public/
+│   ├── hrkonek-icon.png                   App icon
+│   ├── hrkonek-logo-top-sidebar.jpg       Sidebar logo
+│   ├── file.svg / globe.svg / next.svg    Static assets
+│   └── uploads/                           Uploaded documents & images
+├── middleware.ts                          Next.js middleware (auth guard)
+├── next.config.ts                         Next.js configuration
+├── prisma.config.ts                       Prisma configuration
+├── postcss.config.mjs                     PostCSS config
+├── tailwind.config.ts                     Tailwind CSS config
+├── tsconfig.json                          TypeScript config
+└── eslint.config.mjs                      ESLint config
 ```
 
 ---
 
 ## Database
 
-**HRKonek** uses SQLite via Prisma ORM.
-
-### Key Models
+**HRKonek** uses SQLite via Prisma ORM with the following models:
 
 | Model | Description |
 |---|---|
-| **Employee** | Employee records with personal info, employment details, government IDs |
-| **Applicant** | Job applicant records with application status workflow |
-
-### Seed Data
-
-The database ships with sample data. You can reset it at any time:
-
-```bash
-npx prisma db push --force-reset
-```
+| **Employee** | Employee records with personal info, government IDs, employment details, archive support |
+| **Applicant** | Job applicant records with application status workflow and archive support |
+| **ContributionRecord** | SSS/PhilHealth/PAG-IBIG contribution history per employee |
+| **Notification** | In-app notifications with read/unread tracking |
+| **AdminUser** | Admin accounts with hashed passwords |
+| **AdminSession** | Login session tokens |
+| **SystemCounter** | Auto-incrementing ID counters |
 
 ---
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+This project is licensed under the MIT License.
 
 ---
 
