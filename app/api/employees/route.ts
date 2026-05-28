@@ -68,6 +68,18 @@ export async function POST(request: Request) {
       )
     }
 
+    const duplicateNameRows = await prisma.$queryRaw<Array<{ id: string; email: string }>>`
+      SELECT id, email FROM Employee
+      WHERE firstName = ${firstName} AND lastName = ${lastName}
+      LIMIT 1
+    `
+    if (duplicateNameRows.length > 0) {
+      return Response.json(
+        { message: `An employee named ${firstName} ${lastName} already exists (${duplicateNameRows[0].email}). Use a different email or edit the existing record.` },
+        { status: 409 }
+      )
+    }
+
     const lastEmployeeRows = await prisma.$queryRaw<Array<{ employeeId: string | null }>>`
       SELECT employeeId FROM Employee
       WHERE employeeId IS NOT NULL

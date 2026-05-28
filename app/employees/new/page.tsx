@@ -135,14 +135,14 @@ export default function NewEmployeePage() {
 
       if (!response.ok) {
         setError(data.message || data.error || "Failed to create employee");
+        setIsSubmitting(false);
         return;
       }
 
-      router.push("/employees");
-      router.refresh();
+      setIsSubmitting(false);
+      window.location.href = "/employees";
     } catch (err) {
       setError("Connection error. Please check your network and try again.");
-    } finally {
       setIsSubmitting(false);
     }
   };
