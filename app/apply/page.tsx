@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Check, Upload, X } from 'lucide-react';
+import SearchableSelect from '@/components/SearchableSelect';
+import { POSITIONS } from '@/lib/constants';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type FormDataRecord = {
@@ -454,18 +456,15 @@ export default function ApplyPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="position" className="text-sm font-medium text-gray-700">
-                Position Applied For <span className="text-blue-600">*</span>
-              </label>
-              <input
-                id="position"
-                className={inputClass('position')}
-                placeholder="e.g. HR Officer"
+              <SearchableSelect
+                label="Position Applied For"
+                options={POSITIONS}
                 value={formData.position}
-                onInput={handleSafeInput}
-                onChange={e => setField('position', e.target.value)}
+                onChange={(val) => setField('position', val)}
+                error={errors.position}
+                placeholder="Select or type position..."
+                required
               />
-              <FieldError field="position" />
             </div>
 
             {/* ── Salary: numeric-only with peso prefix ── */}

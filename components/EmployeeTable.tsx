@@ -35,8 +35,10 @@ function FilterDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
+  const [depSearch, setDepSearch] = useState("");
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const depInputRef = useRef<HTMLInputElement>(null);
 
   const calculatePosition = useCallback(() => {
     if (!buttonRef.current) return;
@@ -46,14 +48,21 @@ function FilterDropdown({
       top: rect.bottom + 8,
       right: window.innerWidth - rect.right,
       zIndex: 9999,
-      width: 224,
+      width: 260,
     });
   }, []);
 
   function handleOpen() {
     calculatePosition();
     setOpen(o => !o);
+    setDepSearch("");
   }
+
+  const filteredDepartments = useMemo(() => {
+    if (!depSearch) return departments;
+    const lower = depSearch.toLowerCase();
+    return departments.filter(d => d.toLowerCase().includes(lower));
+  }, [departments, depSearch]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -79,6 +88,14 @@ function FilterDropdown({
       window.removeEventListener('resize', reposition);
     };
   }, [open, calculatePosition]);
+
+  const openChangedRef = useRef(open);
+  React.useEffect(() => {
+    if (open && !openChangedRef.current && depInputRef.current) {
+      depInputRef.current.focus();
+    }
+    openChangedRef.current = open;
+  }, [open]);
 
   function toggleStatus(s: string) {
     onToggleStatus(s);
@@ -129,20 +146,45 @@ function FilterDropdown({
       <div className="px-2 py-1.5 mb-1">
         <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Department</span>
       </div>
-      {departments.map(d => {
-        const ticked = activeDepartmentFilters.includes(d);
-        return (
+      <div className="relative mb-1">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+        <input
+          ref={depInputRef}
+          type="text"
+          value={depSearch}
+          onChange={e => setDepSearch(e.target.value)}
+          placeholder="Search departments..."
+          className="w-full pl-8 pr-2.5 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A]"
+        />
+        {depSearch && (
           <button
-            key={d}
-            onClick={() => toggleDepartment(d)}
-            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors ${ticked ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
+            onClick={() => setDepSearch("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
           >
-            <Briefcase className={`w-3 h-3 ${ticked ? 'text-gray-900' : 'text-gray-400'}`} />
-            <span className="flex-1 text-left text-gray-700">{d}</span>
-            {ticked && <span className="text-xs font-semibold text-blue-700">✓</span>}
+            <X className="w-3 h-3" />
           </button>
-        );
-      })}
+        )}
+      </div>
+      <div className="max-h-44 overflow-y-auto">
+        {filteredDepartments.length > 0 ? (
+          filteredDepartments.map(d => {
+            const ticked = activeDepartmentFilters.includes(d);
+            return (
+              <button
+                key={d}
+                onClick={() => toggleDepartment(d)}
+                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors ${ticked ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
+              >
+                <Briefcase className={`w-3 h-3 flex-shrink-0 ${ticked ? 'text-gray-900' : 'text-gray-400'}`} />
+                <span className="flex-1 text-left text-gray-700 truncate">{d}</span>
+                {ticked && <span className="text-xs font-semibold text-blue-700 flex-shrink-0">✓</span>}
+              </button>
+            );
+          })
+        ) : (
+          <p className="px-2.5 py-2 text-sm text-gray-400">No departments match</p>
+        )}
+      </div>
     </div>
   ) : null;
 

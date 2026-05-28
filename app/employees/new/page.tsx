@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import SearchableSelect from "@/components/SearchableSelect";
+import { DEPARTMENTS, POSITIONS } from "@/lib/constants";
 
 interface FormData {
   firstName: string;
@@ -268,21 +270,23 @@ export default function NewEmployeePage() {
                     placeholder="Auto-generated"
                   />
                 </div>
-                <InputField 
-                  label="Position" 
-                  name="role" 
-                  value={formData.role} 
-                  onChange={(val) => handleInputChange("role", val)} 
+                <SearchableSelect
+                  label="Position"
+                  options={POSITIONS}
+                  value={formData.role}
+                  onChange={(val) => handleInputChange("role", val)}
                   error={fieldErrors.role}
+                  placeholder="Select or type position..."
                 />
               </div>
               <div className="grid grid-cols-2 gap-6">
-                <InputField 
-                  label="Department" 
-                  name="department" 
-                  value={formData.department} 
-                  onChange={(val) => handleInputChange("department", val)} 
+                <SearchableSelect
+                  label="Department"
+                  options={DEPARTMENTS}
+                  value={formData.department}
+                  onChange={(val) => handleInputChange("department", val)}
                   error={fieldErrors.department}
+                  placeholder="Select or type department..."
                 />
                 <InputField 
                   label="Start Date" 

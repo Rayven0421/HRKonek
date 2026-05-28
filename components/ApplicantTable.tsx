@@ -11,6 +11,8 @@ import {
   Shield, Heart, Home, FileText, Download,
   Mail, Phone, User, Briefcase
 } from 'lucide-react';
+import SearchableSelect from '@/components/SearchableSelect';
+import { DEPARTMENTS, POSITIONS } from '@/lib/constants';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Applicant = {
@@ -697,8 +699,10 @@ function ConvertToEmployeeModal({
             <div className="border-t border-gray-100 pt-4">
               <h3 className="text-sm font-bold text-[#1E3A8A] mb-3 uppercase tracking-wider">Employment Details</h3>
               <div className="grid grid-cols-2 gap-3">
-                <FormField label="Position/Role" value={form.position} onChange={v => update('position', v)} required error={errors.position} className="col-span-2" />
-                <FormField label="Department" value={form.department} onChange={v => update('department', v)} required error={errors.department} />
+                <div className="col-span-2">
+                  <SearchableSelect label="Position/Role" options={POSITIONS} value={form.position} onChange={v => update('position', v)} required error={errors.position} placeholder="Select or type position..." />
+                </div>
+                <SearchableSelect label="Department" options={DEPARTMENTS} value={form.department} onChange={v => update('department', v)} required error={errors.department} placeholder="Select or type department..." />
                 <SelectField label="Employment Type" value={form.employmentType} onChange={v => update('employmentType', v)} options={['Regular', 'Contractual', 'Part-time', 'Probationary']} />
                 <FormField label="Start Date" type="date" value={form.startDate} onChange={v => update('startDate', v)} />
                 <FormField label="Annual Salary (₱)" value={form.salary} onChange={v => update('salary', v)} />

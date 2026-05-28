@@ -10,6 +10,8 @@ import {
   Shield, Heart, Home, ChevronLeft,
   Printer, X, Save, Camera, AlertCircle, CheckCircle
 } from "lucide-react";
+import SearchableSelect from "@/components/SearchableSelect";
+import { DEPARTMENTS, POSITIONS } from "@/lib/constants";
 
 interface Employee {
   id: string;
@@ -992,35 +994,21 @@ export default function EmployeeDetailClient({
 
               <div className="grid grid-cols-2 gap-4">
                 <FormField label="Position/Role" required error={errors.role}>
-                  <div className="relative">
-                    <input
-                      name="role"
-                      type="text"
-                      value={formData.role || ''}
-                      onInput={handleSafeInput}
-                      onChange={(e) => handleFormChange('role', e.target.value)}
-                      onBlur={(e) => handleFieldBlur('role', e.target.value)}
-                      className={`w-full px-3 py-2 border ${getFieldBorderClass('role')} rounded-lg text-gray-900 placeholder-gray-400 text-sm bg-white focus:outline-none focus:ring-2 transition-all pr-8`}
-                      placeholder="Enter position/role"
-                    />
-                    {renderInputIcon('role')}
-                  </div>
+                  <SearchableSelect
+                    options={POSITIONS}
+                    value={formData.role || ''}
+                    onChange={(val) => handleFormChange('role', val)}
+                    placeholder="Select or type position..."
+                  />
                 </FormField>
 
                 <FormField label="Department" required error={errors.department}>
-                  <div className="relative">
-                    <input
-                      name="department"
-                      type="text"
-                      value={formData.department || ''}
-                      onInput={handleSafeInput}
-                      onChange={(e) => handleFormChange('department', e.target.value)}
-                      onBlur={(e) => handleFieldBlur('department', e.target.value)}
-                      className={`w-full px-3 py-2 border ${getFieldBorderClass('department')} rounded-lg text-gray-900 placeholder-gray-400 text-sm bg-white focus:outline-none focus:ring-2 transition-all pr-8`}
-                      placeholder="Enter department"
-                    />
-                    {renderInputIcon('department')}
-                  </div>
+                  <SearchableSelect
+                    options={DEPARTMENTS}
+                    value={formData.department || ''}
+                    onChange={(val) => handleFormChange('department', val)}
+                    placeholder="Select or type department..."
+                  />
                 </FormField>
 
                 <FormField label="Annual Salary" error={errors.salary}>
