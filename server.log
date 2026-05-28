@@ -1,0 +1,14 @@
+
+> hrkonek@0.1.0 dev
+> next dev
+
+ ⚠ Port 3000 is in use by process 4044, using available port 3001 instead.
+   ▲ Next.js 15.5.18
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.1.100:3001
+   - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 2.5s
+
+C:\Users\rayve\Desktop\HRKonek\hrkonek>

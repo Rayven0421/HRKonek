@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { sanitizeRequired, sanitizeString, sanitizeNumber, sanitizeDate, sanitizeEmail, sanitizeEmployeeStatus, getFriendlyError } from '@/lib/sanitize'
+import { createNotification } from '@/lib/notifications'
 
 export async function POST(request: Request) {
   try {
@@ -109,6 +110,13 @@ export async function POST(request: Request) {
       FROM Employee WHERE id = ${newEmployeeId} LIMIT 1
     `
     const employee = newEmployeeRows[0]
+
+    await createNotification({
+      type: 'new_employee',
+      title: 'New Employee Added',
+      message: `${firstName} ${lastName} has been added as a new employee.`,
+      link: `/employees/${newEmployeeId}`
+    })
 
     return Response.json(employee, { status: 201 })
   } catch (error) {

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import Sidebar from "@/components/Sidebar";
+import NotificationBell from "@/components/NotificationBell";
+import NavbarUserMenu from "@/components/NavbarUserMenu";
 import {
-  Bell,
-  UserCircle,
   Shield,
   Heart,
   Home,
@@ -605,8 +605,98 @@ function GenerateReportModal({
 
       const BOM = "\uFEFF";
       const escapeCell = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+      const escapeHtml = (v: string) =>
+        String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       const fmtNum = (n: number) =>
         n.toLocaleString("en-PH", { minimumFractionDigits: 2 });
+
+      if (reportFormat === "pdf") {
+        const fmtDate = (d: Date) =>
+          d.toLocaleDateString("en-PH", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          });
+
+        let rowsHtml = "";
+        for (const emp of filtered) {
+          const sss = emp.sssNumber ? computeSSS(emp.salary) : 0;
+          const ph = emp.philhealthNumber ? computePhilHealth(emp.salary) : 0;
+          const pg = emp.pagibigNumber ? computePagibig(emp.salary) : 0;
+          rowsHtml += `<tr>
+            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px">${escapeHtml(emp.firstName + " " + emp.lastName)}</td>
+            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px">${escapeHtml(emp.status)}</td>
+            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px">${escapeHtml(fmtDate(new Date(emp.hireDate ?? emp.createdAt)))}</td>
+            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px">${emp.sssNumber ? escapeHtml(emp.sssNumber) : "Not enrolled"}</td>
+            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px;text-align:right">${emp.sssNumber ? fmtNum(sss) : "\u2014"}</td>
+            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px">${emp.philhealthNumber ? escapeHtml(emp.philhealthNumber) : "Not enrolled"}</td>
+            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px;text-align:right">${emp.philhealthNumber ? fmtNum(ph) : "\u2014"}</td>
+            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px">${emp.pagibigNumber ? escapeHtml(emp.pagibigNumber) : "Not enrolled"}</td>
+            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px;text-align:right">${emp.pagibigNumber ? fmtNum(pg) : "\u2014"}</td>
+            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px;text-align:right;font-weight:bold">${fmtNum(sss + ph + pg)}</td>
+          </tr>`;
+        }
+
+        const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>HRKonek Benefits Report</title>
+<style>
+  @media print { @page { margin: 15mm; } body { font-family: Arial, sans-serif; } }
+</style>
+</head>
+<body style="font-family:Arial,sans-serif;color:#333;padding:20px">
+  <h1 style="color:#1E3A8A;margin-bottom:4px">HRKonek Benefits Report</h1>
+  <p style="color:#666;font-size:13px;margin:2px 0">Report Type: ${escapeHtml(reportType)} | Date Range: ${escapeHtml(dateFrom)} to ${escapeHtml(dateTo)}</p>
+  <p style="color:#666;font-size:13px;margin:2px 0">Generated: ${escapeHtml(fmtDate(new Date()))}</p>
+  <hr style="border:none;border-top:2px solid #1E3A8A;margin:12px 0" />
+  <h2 style="color:#1E3A8A;font-size:16px">Summary</h2>
+  <p style="font-size:13px">Total Employees in Range: ${filtered.length}</p>
+  ${reportType === "All Benefits" || reportType === "SSS Only" ? `<p style="font-size:13px">SSS Enrolled: ${filtered.filter(e => e.sssNumber).length} | SSS Monthly Total: ${fmtNum(filtered.filter(e => e.sssNumber).reduce((s, e) => s + computeSSS(e.salary), 0))}</p>` : ""}
+  ${reportType === "All Benefits" || reportType === "PhilHealth Only" ? `<p style="font-size:13px">PhilHealth Enrolled: ${filtered.filter(e => e.philhealthNumber).length} | PhilHealth Monthly Total: ${fmtNum(filtered.filter(e => e.philhealthNumber).reduce((s, e) => s + computePhilHealth(e.salary), 0))}</p>` : ""}
+  ${reportType === "All Benefits" || reportType === "PAG-IBIG Only" ? `<p style="font-size:13px">PAG-IBIG Enrolled: ${filtered.filter(e => e.pagibigNumber).length} | PAG-IBIG Monthly Total: ${fmtNum(filtered.filter(e => e.pagibigNumber).reduce((s, e) => s + computePagibig(e.salary), 0))}</p>` : ""}
+  ${includeEmployeeDetails ? `
+  <hr style="border:none;border-top:1px solid #ccc;margin:12px 0" />
+  <h2 style="color:#1E3A8A;font-size:16px">Employee Details</h2>
+  <table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead>
+      <tr style="background:#1E3A8A;color:white">
+        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:left">Name</th>
+        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:left">Status</th>
+        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:left">Hire Date</th>
+        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:left">SSS #</th>
+        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:right">SSS</th>
+        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:left">PH #</th>
+        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:right">PH</th>
+        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:left">PAG-IBIG #</th>
+        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:right">PAG-IBIG</th>
+        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:right">Total</th>
+      </tr>
+    </thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>` : ""}
+  <p style="margin-top:20px;font-size:11px;color:#999;text-align:center">HRKonek - Benefits Management Report</p>
+</body>
+</html>`;
+
+        const win = window.open("", "_blank");
+        if (win) {
+          win.document.write(html);
+          win.document.close();
+          win.focus();
+          setTimeout(() => win.print(), 500);
+        } else {
+          setReportError(
+            "Popup blocked. Please allow popups for this site to generate PDF reports."
+          );
+          setIsGenerating(false);
+          return;
+        }
+
+        onSuccess?.("Benefits report opened for PDF download!");
+        onClose();
+        setIsGenerating(false);
+        return;
+      }
 
       let csvContent = "";
 
@@ -1564,19 +1654,9 @@ export default function BenefitsClient({
           <div className="hidden lg:block text-white font-semibold text-base tracking-wide opacity-80 select-none">
             Management Portal
           </div>
-          <div className="flex items-center gap-4 sm:gap-5">
-            <button className="relative text-white/80 hover:text-white transition-colors">
-              <Bell className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-400 rounded-full" />
-            </button>
-            <div className="flex items-center gap-2 text-white">
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                <UserCircle className="w-6 h-6 text-white" />
-              </div>
-              <span className="hidden sm:block text-sm font-medium">
-                Admin User
-              </span>
-            </div>
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <NavbarUserMenu />
           </div>
         </header>
 

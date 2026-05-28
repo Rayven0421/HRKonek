@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { sanitizeApplicantStatus, getFriendlyError } from '@/lib/sanitize'
+import { createNotification } from '@/lib/notifications'
 
 export async function PATCH(
   request: Request,
@@ -52,6 +53,23 @@ export async function PATCH(
       SELECT * FROM Applicant WHERE id = ${id} LIMIT 1
     `
     const updatedApplicant = updatedRows[0]
+
+    if (newStatus === 'Hired') {
+      await createNotification({
+        type: 'status_changed',
+        title: 'Applicant Hired',
+        message: `${updatedApplicant.firstName} ${updatedApplicant.lastName} has been marked as Hired.`,
+        link: '/applicants'
+      })
+    }
+    if (newStatus === 'Interview Scheduled') {
+      await createNotification({
+        type: 'status_changed',
+        title: 'Interview Scheduled',
+        message: `An interview has been scheduled for ${updatedApplicant.firstName} ${updatedApplicant.lastName}.`,
+        link: '/applicants'
+      })
+    }
 
     return Response.json(updatedApplicant)
   } catch (error) {

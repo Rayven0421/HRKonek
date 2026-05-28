@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { sanitizeRequired, sanitizeString, sanitizeNumber, sanitizeDate, sanitizeEmail, getFriendlyError } from '@/lib/sanitize'
+import { createNotification } from '@/lib/notifications'
 
 export async function POST(request: Request) {
   try {
@@ -79,6 +80,13 @@ export async function POST(request: Request) {
           updatedAt = ${new Date().toISOString()}
       WHERE id = ${applicantId}
     `
+
+    await createNotification({
+      type: 'new_employee',
+      title: 'Applicant Converted to Employee',
+      message: `${firstName} ${lastName} has been hired and added as an employee.`,
+      link: `/employees/${newEmployeeId}`
+    })
 
     return Response.json({
       success: true,

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff, Users, Briefcase } from "lucide-react";
+import { Eye, EyeOff, Users, Briefcase, AlertCircle, Loader2 } from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
@@ -11,10 +11,52 @@ export default function Home() {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    router.push("/dashboard");
+    setLoginError('');
+
+    if (!email.trim()) {
+      setLoginError('Please enter your email or username');
+      return;
+    }
+    if (!password.trim()) {
+      setLoginError('Please enter your password');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.includes('@') ? email : undefined,
+          username: !email.includes('@') ? email : undefined,
+          password
+        })
+      });
+
+      const data = await res.json().catch(() => ({
+        message: 'Unexpected response from server'
+      }));
+
+      if (!res.ok) {
+        setLoginError(data.message || 'Login failed. Please try again.');
+        return;
+      }
+
+      sessionStorage.setItem('hrkonek_user', JSON.stringify(data.user));
+      router.push('/dashboard');
+
+    } catch {
+      setLoginError('Connection error. Please check your network and try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -82,17 +124,17 @@ export default function Home() {
             HR Portal Login
           </h2>
 
-          {/* Email */}
+          {/* Email / Username */}
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">
-              Email Address
+              Email or Username
             </label>
             <input
-              type="email"
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all"
-              placeholder="Enter your email address"
+              placeholder="Enter your email or username"
               required
             />
           </div>
@@ -145,14 +187,37 @@ export default function Home() {
             </a>
           </div>
 
+          {/* Error message */}
+          {loginError && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+              <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+              <p className="text-red-600 text-sm">{loginError}</p>
+            </div>
+          )}
+
           {/* Login Button */}
           <button
             type="submit"
-            className="w-full bg-[#1E3A8A] hover:bg-[#152e6f] active:scale-[0.99] text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg mt-1"
+            disabled={isLoading}
+            className="w-full bg-[#1E3A8A] hover:bg-[#152e6f] disabled:opacity-70 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg mt-1"
           >
-            <Users className="w-5 h-5 shrink-0" />
-            Login to HR Portal
+            {isLoading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Signing in...
+              </>
+            ) : (
+              <>
+                <Users className="w-5 h-5 shrink-0" />
+                Login to HR Portal
+              </>
+            )}
           </button>
+
+          {/* Default credentials hint */}
+          <p className="text-xs text-gray-400 text-center mt-2">
+            Default: admin / 123
+          </p>
         </form>
 
         {/* Divider */}

@@ -3,10 +3,12 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
+import NotificationBell from "@/components/NotificationBell";
+import NavbarUserMenu from "@/components/NavbarUserMenu";
 import {
   Mail, Phone, MapPin, Calendar, Briefcase, CreditCard,
-  Shield, Heart, Home, ChevronLeft, UserCircle,
-  Bell, Printer, X, Save, Camera, AlertCircle, CheckCircle
+  Shield, Heart, Home, ChevronLeft,
+  Printer, X, Save, Camera, AlertCircle, CheckCircle
 } from "lucide-react";
 
 interface Employee {
@@ -445,17 +447,9 @@ export default function EmployeeDetailClient({
           <div className="hidden lg:block text-white font-semibold text-base tracking-wide opacity-80 select-none">
             Management Portal
           </div>
-          <div className="flex items-center gap-4 sm:gap-5">
-            <button className="relative text-white/80 hover:text-white transition-colors">
-              <Bell className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-400 rounded-full" />
-            </button>
-            <div className="flex items-center gap-2 text-white">
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                <UserCircle className="w-6 h-6 text-white" />
-              </div>
-              <span className="hidden sm:block text-sm font-medium">Admin User</span>
-            </div>
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <NavbarUserMenu />
           </div>
         </header>
 

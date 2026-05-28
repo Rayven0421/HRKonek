@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { sanitizeRequired, sanitizeString, sanitizeEmail, getFriendlyError } from '@/lib/sanitize'
+import { createNotification } from '@/lib/notifications'
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 
@@ -85,6 +86,13 @@ export async function POST(request: Request) {
         ${new Date().toISOString()}
       )
     `
+
+    await createNotification({
+      type: 'new_application',
+      title: 'New Job Application',
+      message: `${firstName} ${lastName} applied for ${position}.`,
+      link: '/applicants'
+    })
 
     return Response.json({ success: true, message: 'Application submitted successfully' })
   } catch (error) {
