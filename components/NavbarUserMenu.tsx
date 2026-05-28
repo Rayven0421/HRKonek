@@ -17,16 +17,17 @@ type AdminUser = {
 export default function NavbarUserMenu() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [user] = useState<AdminUser | null>(() => {
-    try {
-      if (typeof window === 'undefined') return null
-      const stored = sessionStorage.getItem('hrkonek_user')
-      return stored ? JSON.parse(stored) : null
-    } catch {
-      return null
-    }
-  })
+  const [user, setUser] = useState<AdminUser | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.user) setUser(data.user)
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -53,9 +54,9 @@ export default function NavbarUserMenu() {
   const displayRole = user?.role === 'admin' ? 'Administrator' : (user?.role ?? 'Administrator')
   const initials = getInitials(displayName)
 
-  function handleSignOut() {
+  async function handleSignOut() {
     try {
-      sessionStorage.removeItem('hrkonek_user')
+      await fetch('/api/auth/logout', { method: 'POST' })
     } catch { /* ignore */ }
     setOpen(false)
     router.push('/')

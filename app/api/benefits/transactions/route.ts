@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from '@/app/generated/prisma/client'
 import { NextRequest, NextResponse } from "next/server";
+import { requireApiAuth } from '@/lib/auth'
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,10 @@ function computePagibig(salary: number | null): number {
 }
 
 export async function GET(request: NextRequest) {
+  const user = await requireApiAuth()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   try {
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));

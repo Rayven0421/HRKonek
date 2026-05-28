@@ -1,8 +1,13 @@
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { NextRequest } from 'next/server';
+import { requireApiAuth } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
+  const user = await requireApiAuth()
+  if (!user) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;

@@ -1,6 +1,11 @@
 import { prisma } from '@/lib/prisma'
+import { requireApiAuth } from '@/lib/auth'
 
 export async function GET() {
+  const user = await requireApiAuth()
+  if (!user) {
+    return Response.json({ message: 'Unauthorized' }, { status: 401 })
+  }
   try {
     const storedNotifs = await prisma.$queryRaw<{
       id: string

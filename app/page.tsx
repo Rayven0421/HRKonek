@@ -36,7 +36,8 @@ export default function Home() {
         body: JSON.stringify({
           email: email.includes('@') ? email : undefined,
           username: !email.includes('@') ? email : undefined,
-          password
+          password,
+          rememberMe
         })
       });
 
@@ -49,7 +50,6 @@ export default function Home() {
         return;
       }
 
-      sessionStorage.setItem('hrkonek_user', JSON.stringify(data.user));
       router.push('/dashboard');
 
     } catch {
@@ -103,11 +103,11 @@ export default function Home() {
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-6">
-          <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-2 border-[#1E3A8A] flex items-center justify-center bg-white shadow-sm overflow-hidden">
+          <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-2 border-[#1E3A8A] flex items-center justify-center bg-[#f8faff] shadow-sm overflow-hidden">
             <img
               src="/hrkonek-icon.png"
               alt="HRKonek"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain p-1.5"
             />
           </div>
           <span className="text-2xl font-bold text-gray-900 mt-3 tracking-wide">

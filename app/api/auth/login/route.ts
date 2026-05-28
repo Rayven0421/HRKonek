@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { createHash } from 'crypto'
+import { createSession, setSessionCookie } from '@/lib/auth'
 
 function hashPassword(password: string): string {
   return createHash('sha256')
@@ -13,6 +14,7 @@ export async function POST(request: Request) {
       email?: string
       username?: string
       password?: string
+      rememberMe?: boolean
     }
 
     try {
@@ -24,7 +26,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { email, username, password } = body
+    const { email, username, password, rememberMe } = body
 
     if (!password || password.trim() === '') {
       return Response.json(
@@ -82,7 +84,9 @@ export async function POST(request: Request) {
       )
     }
 
-    return Response.json({
+    const { token, maxAge } = await createSession(admin.id, rememberMe ?? false)
+
+    const response = Response.json({
       success: true,
       user: {
         id: admin.id,
@@ -92,6 +96,10 @@ export async function POST(request: Request) {
         role: admin.role
       }
     })
+
+    response.headers.set('Set-Cookie', setSessionCookie(token, maxAge))
+
+    return response
 
   } catch (error) {
     console.error('Login error:', error)

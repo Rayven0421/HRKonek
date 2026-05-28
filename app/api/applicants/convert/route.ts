@@ -1,8 +1,13 @@
 import { prisma } from '@/lib/prisma';
 import { sanitizeRequired, sanitizeString, sanitizeNumber, sanitizeDate, sanitizeEmail, getFriendlyError } from '@/lib/sanitize'
 import { createNotification } from '@/lib/notifications'
+import { requireApiAuth } from '@/lib/auth'
 
 export async function POST(request: Request) {
+  const user = await requireApiAuth()
+  if (!user) {
+    return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+  }
   try {
     let body: Record<string, unknown>
     try {

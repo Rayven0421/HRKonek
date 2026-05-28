@@ -86,12 +86,25 @@ model Notification {
 }
 
 model AdminUser {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  username     String   @unique
+  id           String         @id @default(uuid())
+  email        String         @unique
+  username     String         @unique
   passwordHash String
   name         String
-  role         String   @default("admin")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  role         String         @default("admin")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  sessions     AdminSession[]
+}
+
+model AdminSession {
+  id        String    @id @default(uuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  user      AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
 }

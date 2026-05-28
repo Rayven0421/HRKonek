@@ -1,10 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { sanitizeRequired, sanitizeString, sanitizeNumber, sanitizeDate, sanitizeEmail, sanitizeEmployeeStatus, getFriendlyError } from '@/lib/sanitize'
+import { requireApiAuth } from '@/lib/auth'
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireApiAuth()
+  if (!user) {
+    return Response.json({ message: 'Unauthorized' }, { status: 401 })
+  }
   try {
     const { id } = await params
 

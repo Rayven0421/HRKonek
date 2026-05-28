@@ -1,7 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { sanitizeMonth, sanitizeYear, getFriendlyError } from '@/lib/sanitize'
+import { requireApiAuth } from '@/lib/auth'
 
 export async function POST(request: Request) {
+  const user = await requireApiAuth()
+  if (!user) {
+    return Response.json({ message: 'Unauthorized' }, { status: 401 })
+  }
   try {
     let body: Record<string, unknown>
     try {
