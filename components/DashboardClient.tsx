@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import GrowthChart from "@/components/GrowthChart";
 import Sidebar from "@/components/Sidebar";
 import NotificationBell from "@/components/NotificationBell";
@@ -173,11 +175,20 @@ export default function DashboardClient({
     return csv;
   }
 
-  function generatePDFContent() {
+  function generatePDF() {
     const dateStr = `${reportDateFrom} to ${reportDateTo}`;
     const today = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
-    let tableRows = "";
-    let summaryRows = "";
+    const doc = new jsPDF({ orientation: "landscape" });
+
+    // Header
+    doc.setFontSize(18);
+    doc.setTextColor(30, 58, 138);
+    doc.text(`HRKonek — ${reportType}`, 14, 20);
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text(`Period: ${dateStr}  |  Generated: ${today}`, 14, 28);
+
+    let y = 38;
 
     if (reportType === "Employee Summary" || reportType === "Full HR Report") {
       const filtered = allEmployees.filter(emp => {
@@ -187,14 +198,139 @@ export default function DashboardClient({
         to.setHours(23, 59, 59, 999);
         return d >= from && d <= to;
       });
-      summaryRows += `
-        <div class="stat-card"><span class="stat-label">Total Employees</span><span class="stat-value">${totalEmployees}</span></div>
-        <div class="stat-card"><span class="stat-label">Active</span><span class="stat-value">${allEmployees.filter(e => e.status === "Active").length}</span></div>
-        <div class="stat-card"><span class="stat-label">On Leave</span><span class="stat-value">${allEmployees.filter(e => e.status === "On Leave").length}</span></div>
-        <div class="stat-card"><span class="stat-label">Inactive</span><span class="stat-value">${allEmployees.filter(e => e.status === "Inactive").length}</span></div>`;
-      filtered.forEach(emp => {
-        tableRows += `<tr><td>${emp.firstName} ${emp.lastName}</td><td>${emp.department}</td><td>${emp.role}</td><td>${emp.status}</td><td>${new Date(emp.createdAt).toLocaleDateString()}</td><td>${emp.salary ? '₱' + Number(emp.salary).toLocaleString() : '—'}</td></tr>`;
+
+      // Summary stats
+      doc.setFontSize(12);
+      doc.setTextColor(30, 58, 138);
+      doc.text("Summary", 14, y);
+      y += 7;
+      doc.setFontSize(10);
+      doc.setTextColor(60);
+      const active = allEmployees.filter(e => e.status === "Active").length;
+      const onLeave = allEmployees.filter(e => e.status === "On Leave").length;
+      const inactive = allEmployees.filter(e => e.status === "Inactive").length;
+      doc.text(`Total Employees: ${totalEmployees}  |  Active: ${active}  |  On Leave: ${onLeave}  |  Inactive: ${inactive}`, 14, y);
+      y += 8;
+
+      if (filtered.length > 0) {
+        autoTable(doc, {
+          startY: y,
+          head: [[{ content: "Employee Details", colSpan: 6, styles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 9 } }]],
+          body: [],
+          margin: { top: 14 },
+        });
+        const lastY = (doc as any).lastAutoTable.finalY || y;
+        autoTable(doc, {
+          startY: lastY + 2,
+          head: [["Name", "Department", "Role", "Status", "Hire Date", "Salary"]],
+          body: filtered.map(emp => [
+            `${emp.firstName} ${emp.lastName}`,
+            emp.department,
+            emp.role,
+            emp.status,
+            new Date(emp.createdAt).toLocaleDateString(),
+            emp.salary ? `₱${Number(emp.salary).toLocaleString()}` : "—",
+          ]),
+          theme: "grid",
+          headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 8 },
+          bodyStyles: { fontSize: 8 },
+          margin: { top: 14 },
+        });
+      }
+    }
+
+    if (reportType === "Applicant Summary" || reportType === "Full HR Report") {
+      const filtered = allApplicants.filter(app => {
+        const d = new Date(app.appliedAt);
+        const from = new Date(reportDateFrom);
+        const to = new Date(reportDateTo);
+        to.setHours(23, 59, 59, 999);
+        return d >= from && d <= to;
       });
+
+      const hired = filtered.filter(a => a.status === "Hired").length;
+      const rejected = filtered.filter(a => a.status === "Rejected").length;
+      const conversionRate = filtered.length ? Math.round(hired / filtered.length * 100) : 0;
+
+      if (reportType !== "Full HR Report") {
+        doc.setFontSize(12);
+        doc.setTextColor(30, 58, 138);
+        doc.text("Summary", 14, y);
+        y += 7;
+        doc.setFontSize(10);
+        doc.setTextColor(60);
+      }
+      doc.text(`Total Applicants: ${filtered.length}  |  Hired: ${hired}  |  Rejected: ${rejected}  |  Conversion Rate: ${conversionRate}%`, 14, y);
+      y += 8;
+
+      if (filtered.length > 0) {
+        const lastY = (doc as any).lastAutoTable?.finalY || y;
+        autoTable(doc, {
+          startY: lastY + 2,
+          head: [["Name", "Position", "Status", "Applied Date"]],
+          body: filtered.map(app => [
+            `${app.firstName} ${app.lastName}`,
+            app.position,
+            app.status,
+            new Date(app.appliedAt).toLocaleDateString(),
+          ]),
+          theme: "grid",
+          headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 8 },
+          bodyStyles: { fontSize: 8 },
+          margin: { top: 14 },
+        });
+      }
+    }
+
+    if (reportType === "Department Breakdown") {
+      const deptMap = new Map<string, number>();
+      allEmployees.forEach(emp => deptMap.set(emp.department, (deptMap.get(emp.department) || 0) + 1));
+
+      autoTable(doc, {
+        startY: y,
+        head: [["Department", "Employee Count", "Roles"]],
+        body: Array.from(deptMap.entries()).map(([dept, count]) => [
+          dept,
+          String(count),
+          allEmployees.filter(e => e.department === dept).map(e => e.role).filter((v, i, a) => a.indexOf(v) === i).join(", "),
+        ]),
+        theme: "grid",
+        headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 8 },
+        bodyStyles: { fontSize: 8 },
+        margin: { top: 14 },
+      });
+    }
+
+    doc.save(`${reportType.replace(/\s+/g, '_')}_${reportDateFrom}_${reportDateTo}.pdf`);
+  }
+
+  function generatePrintHTML() {
+    const dateStr = `${reportDateFrom} to ${reportDateTo}`;
+    const today = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    let summaryHtml = "";
+    let tableHtml = "";
+    let tableHeaders = "";
+
+    if (reportType === "Employee Summary" || reportType === "Full HR Report") {
+      const filtered = allEmployees.filter(emp => {
+        const d = new Date(emp.createdAt);
+        const from = new Date(reportDateFrom);
+        const to = new Date(reportDateTo);
+        to.setHours(23, 59, 59, 999);
+        return d >= from && d <= to;
+      });
+      const active = allEmployees.filter(e => e.status === "Active").length;
+      const onLeave = allEmployees.filter(e => e.status === "On Leave").length;
+      const inactive = allEmployees.filter(e => e.status === "Inactive").length;
+      summaryHtml += `<div class="stat-card"><span class="stat-label">Total Employees</span><span class="stat-value">${totalEmployees}</span></div>
+        <div class="stat-card"><span class="stat-label">Active</span><span class="stat-value">${active}</span></div>
+        <div class="stat-card"><span class="stat-label">On Leave</span><span class="stat-value">${onLeave}</span></div>
+        <div class="stat-card"><span class="stat-label">Inactive</span><span class="stat-value">${inactive}</span></div>`;
+      filtered.forEach(emp => {
+        tableHtml += `<tr><td>${emp.firstName} ${emp.lastName}</td><td>${emp.department}</td><td>${emp.role}</td><td>${emp.status}</td><td>${new Date(emp.createdAt).toLocaleDateString()}</td><td>${emp.salary ? '₱' + Number(emp.salary).toLocaleString() : '—'}</td></tr>`;
+      });
+      if (reportType === "Full HR Report") tableHeaders = '<th>Name</th><th>Department</th><th>Role</th><th>Status</th><th>Hire Date</th><th>Salary</th>';
+      else tableHeaders = '<th>Name</th><th>Department</th><th>Role</th><th>Status</th><th>Hire Date</th><th>Salary</th>';
     }
     if (reportType === "Applicant Summary" || reportType === "Full HR Report") {
       const filtered = allApplicants.filter(app => {
@@ -206,28 +342,31 @@ export default function DashboardClient({
       });
       const hired = filtered.filter(a => a.status === "Hired").length;
       const rejected = filtered.filter(a => a.status === "Rejected").length;
-      summaryRows += `
-        <div class="stat-card"><span class="stat-label">Total Applications</span><span class="stat-value">${filtered.length}</span></div>
+      const conversionRate = filtered.length ? Math.round(hired / filtered.length * 100) : 0;
+      summaryHtml += `<div class="stat-card"><span class="stat-label">Total Applications</span><span class="stat-value">${filtered.length}</span></div>
         <div class="stat-card"><span class="stat-label">Hired</span><span class="stat-value">${hired}</span></div>
         <div class="stat-card"><span class="stat-label">Rejected</span><span class="stat-value">${rejected}</span></div>
-        <div class="stat-card"><span class="stat-label">Conversion Rate</span><span class="stat-value">${filtered.length ? Math.round(hired / filtered.length * 100) : 0}%</span></div>`;
+        <div class="stat-card"><span class="stat-label">Conversion Rate</span><span class="stat-value">${conversionRate}%</span></div>`;
       filtered.forEach(app => {
-        tableRows += `<tr><td>${app.firstName} ${app.lastName}</td><td>${app.position}</td><td>${app.status}</td><td>${new Date(app.appliedAt).toLocaleDateString()}</td></tr>`;
+        tableHtml += `<tr><td>${app.firstName} ${app.lastName}</td><td>${app.position}</td><td>${app.status}</td><td>${new Date(app.appliedAt).toLocaleDateString()}</td></tr>`;
       });
+      if (reportType === "Full HR Report" && tableHeaders === "") tableHeaders = '<th>Name</th><th>Position</th><th>Status</th><th>Date</th>';
+      else if (reportType !== "Full HR Report") tableHeaders = '<th>Name</th><th>Position</th><th>Status</th><th>Date</th>';
     }
     if (reportType === "Department Breakdown") {
       const deptMap = new Map<string, number>();
       allEmployees.forEach(emp => deptMap.set(emp.department, (deptMap.get(emp.department) || 0) + 1));
       deptMap.forEach((count, dept) => {
-        tableRows += `<tr><td>${dept}</td><td>${count}</td><td>${allEmployees.filter(e => e.department === dept).map(e => e.role).filter((v,i,a) => a.indexOf(v) === i).join(", ")}</td></tr>`;
+        tableHtml += `<tr><td>${dept}</td><td>${count}</td><td>${allEmployees.filter(e => e.department === dept).map(e => e.role).filter((v, i, a) => a.indexOf(v) === i).join(", ")}</td></tr>`;
       });
+      tableHeaders = '<th>Department</th><th>Count</th><th>Roles</th>';
     }
 
     return `<!DOCTYPE html><html><head>
       <style>
-        @page { margin: 20mm; }
+        @media print { @page { margin: 20mm; } body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
         body { font-family: Arial, sans-serif; color: #333; margin: 0; padding: 0; }
-        .header { background: #1E3A8A; color: white; padding: 24px 32px; border-radius: 0; }
+        .header { background: #1E3A8A; color: white; padding: 24px 32px; }
         .header h1 { margin: 0; font-size: 22px; }
         .header p { margin: 4px 0 0; opacity: 0.8; font-size: 13px; }
         .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 20px 32px; }
@@ -239,17 +378,11 @@ export default function DashboardClient({
         td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
         tr:nth-child(even) { background: #f8fafc; }
         .footer { text-align: center; margin: 32px; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 16px; }
-        .confidential { position: absolute; top: 40px; right: 32px; color: rgba(255,255,255,0.3); font-size: 10px; font-weight: bold; letter-spacing: 2px; transform: rotate(0deg); }
-        @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
       </style>
     </head><body>
-      <div class="header">
-        <h1>HRKonek — ${reportType}</h1>
-        <p>Period: ${dateStr} &mdash; Generated: ${today}</p>
-        <div class="confidential">CONFIDENTIAL</div>
-      </div>
-      <div class="stats-grid">${summaryRows}</div>
-      ${tableRows ? `<table><thead><tr>${tableRows.includes('Department,Employee') ? '<th>Department</th><th>Count</th><th>Roles</th>' : tableRows.includes('Position') ? '<th>Name</th><th>Position</th><th>Status</th><th>Date</th>' : '<th>Name</th><th>Department</th><th>Role</th><th>Status</th><th>Hire Date</th><th>Salary</th>'}</tr></thead><tbody>${tableRows}</tbody></table>` : ''}
+      <div class="header"><h1>HRKonek — ${reportType}</h1><p>Period: ${dateStr} &mdash; Generated: ${today}</p></div>
+      <div class="stats-grid">${summaryHtml}</div>
+      ${tableHtml ? `<table><thead><tr>${tableHeaders}</tr></thead><tbody>${tableHtml}</tbody></table>` : ""}
       <div class="footer">HRKonek Management System &mdash; Confidential &mdash; Page 1</div>
     </body></html>`;
   }
@@ -267,8 +400,10 @@ export default function DashboardClient({
         a.download = `${reportType.replace(/\s+/g, '_')}_${reportDateFrom}_${reportDateTo}.csv`;
         a.click();
         URL.revokeObjectURL(url);
+      } else if (reportFormat === "pdf") {
+        generatePDF();
       } else {
-        const html = generatePDFContent();
+        const html = generatePrintHTML();
         const win = window.open("", "_blank");
         if (win) {
           win.document.write(html);
@@ -674,6 +809,16 @@ export default function DashboardClient({
                 <label className="block text-sm font-medium text-gray-700 mb-2">Format</label>
                 <div className="flex gap-2">
                   <button
+                    onClick={() => setReportFormat("pdf")}
+                    className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border transition-all ${
+                      reportFormat === "pdf"
+                        ? "border-[#1E3A8A] bg-[#1E3A8A] text-white"
+                        : "border-gray-300 text-gray-700 hover:bg-gray-50 bg-white"
+                    }`}
+                  >
+                    PDF
+                  </button>
+                  <button
                     onClick={() => setReportFormat("csv")}
                     className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border transition-all ${
                       reportFormat === "csv"
@@ -684,14 +829,14 @@ export default function DashboardClient({
                     CSV
                   </button>
                   <button
-                    onClick={() => setReportFormat("pdf")}
+                    onClick={() => setReportFormat("print")}
                     className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border transition-all ${
-                      reportFormat === "pdf"
+                      reportFormat === "print"
                         ? "border-[#1E3A8A] bg-[#1E3A8A] text-white"
                         : "border-gray-300 text-gray-700 hover:bg-gray-50 bg-white"
                     }`}
                   >
-                    PDF
+                    Print
                   </button>
                 </div>
               </div>

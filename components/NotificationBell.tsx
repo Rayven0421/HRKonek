@@ -109,19 +109,14 @@ export default function NotificationBell() {
     }
 
     try {
-      const res = await fetch(`/api/notifications/${id}`, { method: 'PATCH' })
-      if (!res.ok) throw new Error()
-      setNotifications(prev => prev.map(n =>
-        n.id === id ? { ...n, isRead: true } : n
-      ))
-      setUnreadCount(prev => Math.max(0, prev - 1))
-
+      await fetch(`/api/notifications/${id}`, { method: 'PATCH' })
+      await fetchNotifications()
       if (link) {
         setOpen(false)
         router.push(link)
       }
     } catch {
-      // Fail silently — state unchanged if API fails
+      // Fail silently — re-fetch ensures state matches server
     }
   }
 

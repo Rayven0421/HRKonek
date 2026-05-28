@@ -13,12 +13,22 @@ interface Employee {
   department: string;
   role: string;
   status: string;
+  createdAt: Date;
 }
 
 export default function EmployeeTable({ employees }: { employees: Employee[] }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  const idMap = useMemo(() => {
+    const sorted = [...employees].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    return new Map<string, string>(
+      sorted.map((e, i) => [e.id, `E${String(i + 1).padStart(3, "0")}`])
+    );
+  }, [employees]);
 
   const filteredEmployees = useMemo(() => {
     if (!searchTerm.trim()) return employees;
@@ -105,8 +115,7 @@ export default function EmployeeTable({ employees }: { employees: Employee[] }) 
           <tbody className="divide-y divide-gray-100">
             {currentData.length > 0 ? (
               currentData.map((emp) => {
-                const globalIndex = employees.findIndex(e => e.id === emp.id) + 1;
-                const displayId = `E${globalIndex.toString().padStart(3, "0")}`;
+                const displayId = idMap.get(emp.id) ?? "—";
                 return (
                   <tr key={emp.id} className="hover:bg-blue-50/30 transition-colors">
                     <td className="px-5 py-4 text-sm text-gray-500 font-mono">{displayId}</td>

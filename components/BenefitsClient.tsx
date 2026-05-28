@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import Sidebar from "@/components/Sidebar";
 import NotificationBell from "@/components/NotificationBell";
 import NavbarUserMenu from "@/components/NavbarUserMenu";
@@ -18,12 +20,15 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Save,
   X,
   Info,
   AlertCircle,
   CheckCircle,
   Loader2,
+  History,
 } from "lucide-react";
 
 type BenefitType = "SSS" | "PhilHealth" | "PAG-IBIG";
@@ -605,8 +610,6 @@ function GenerateReportModal({
 
       const BOM = "\uFEFF";
       const escapeCell = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
-      const escapeHtml = (v: string) =>
-        String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       const fmtNum = (n: number) =>
         n.toLocaleString("en-PH", { minimumFractionDigits: 2 });
 
@@ -618,65 +621,204 @@ function GenerateReportModal({
             day: "numeric",
           });
 
-        let rowsHtml = "";
-        for (const emp of filtered) {
-          const sss = emp.sssNumber ? computeSSS(emp.salary) : 0;
-          const ph = emp.philhealthNumber ? computePhilHealth(emp.salary) : 0;
-          const pg = emp.pagibigNumber ? computePagibig(emp.salary) : 0;
-          rowsHtml += `<tr>
-            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px">${escapeHtml(emp.firstName + " " + emp.lastName)}</td>
-            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px">${escapeHtml(emp.status)}</td>
-            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px">${escapeHtml(fmtDate(new Date(emp.hireDate ?? emp.createdAt)))}</td>
-            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px">${emp.sssNumber ? escapeHtml(emp.sssNumber) : "Not enrolled"}</td>
-            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px;text-align:right">${emp.sssNumber ? fmtNum(sss) : "\u2014"}</td>
-            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px">${emp.philhealthNumber ? escapeHtml(emp.philhealthNumber) : "Not enrolled"}</td>
-            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px;text-align:right">${emp.philhealthNumber ? fmtNum(ph) : "\u2014"}</td>
-            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px">${emp.pagibigNumber ? escapeHtml(emp.pagibigNumber) : "Not enrolled"}</td>
-            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px;text-align:right">${emp.pagibigNumber ? fmtNum(pg) : "\u2014"}</td>
-            <td style="padding:6px 10px;border:1px solid #ccc;font-size:12px;text-align:right;font-weight:bold">${fmtNum(sss + ph + pg)}</td>
-          </tr>`;
+        const doc = new jsPDF({ orientation: "landscape" });
+
+        // Title
+        doc.setFontSize(18);
+        doc.setTextColor(30, 58, 138);
+        doc.text("HRKonek Benefits Report", 14, 20);
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(
+          `Report Type: ${reportType}  |  Date Range: ${dateFrom} to ${dateTo}  |  Generated: ${fmtDate(new Date())}`,
+          14,
+          28
+        );
+
+        // Summary
+        let y = 38;
+        doc.setFontSize(12);
+        doc.setTextColor(30, 58, 138);
+        doc.text("Summary", 14, y);
+        y += 7;
+        doc.setFontSize(10);
+        doc.setTextColor(60);
+        doc.text(`Total Employees in Range: ${filtered.length}`, 18, y);
+
+        const sumItems: string[] = [];
+        if (reportType === "All Benefits" || reportType === "SSS Only") {
+          const sssCount = filtered.filter((e) => e.sssNumber).length;
+          const sssTotal = filtered
+            .filter((e) => e.sssNumber)
+            .reduce((s, e) => s + computeSSS(e.salary), 0);
+          sumItems.push(
+            `SSS Enrolled: ${sssCount}  |  SSS Monthly Total: ${fmtNum(sssTotal)}`
+          );
+        }
+        if (reportType === "All Benefits" || reportType === "PhilHealth Only") {
+          const phCount = filtered.filter((e) => e.philhealthNumber).length;
+          const phTotal = filtered
+            .filter((e) => e.philhealthNumber)
+            .reduce((s, e) => s + computePhilHealth(e.salary), 0);
+          sumItems.push(
+            `PhilHealth Enrolled: ${phCount}  |  PhilHealth Monthly Total: ${fmtNum(phTotal)}`
+          );
+        }
+        if (reportType === "All Benefits" || reportType === "PAG-IBIG Only") {
+          const pgCount = filtered.filter((e) => e.pagibigNumber).length;
+          const pgTotal = filtered
+            .filter((e) => e.pagibigNumber)
+            .reduce((s, e) => s + computePagibig(e.salary), 0);
+          sumItems.push(
+            `PAG-IBIG Enrolled: ${pgCount}  |  PAG-IBIG Monthly Total: ${fmtNum(pgTotal)}`
+          );
+        }
+        for (const item of sumItems) {
+          y += 6;
+          doc.text(item, 18, y);
         }
 
-        const html = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>HRKonek Benefits Report</title>
-<style>
-  @media print { @page { margin: 15mm; } body { font-family: Arial, sans-serif; } }
-</style>
-</head>
-<body style="font-family:Arial,sans-serif;color:#333;padding:20px">
-  <h1 style="color:#1E3A8A;margin-bottom:4px">HRKonek Benefits Report</h1>
-  <p style="color:#666;font-size:13px;margin:2px 0">Report Type: ${escapeHtml(reportType)} | Date Range: ${escapeHtml(dateFrom)} to ${escapeHtml(dateTo)}</p>
-  <p style="color:#666;font-size:13px;margin:2px 0">Generated: ${escapeHtml(fmtDate(new Date()))}</p>
-  <hr style="border:none;border-top:2px solid #1E3A8A;margin:12px 0" />
-  <h2 style="color:#1E3A8A;font-size:16px">Summary</h2>
-  <p style="font-size:13px">Total Employees in Range: ${filtered.length}</p>
-  ${reportType === "All Benefits" || reportType === "SSS Only" ? `<p style="font-size:13px">SSS Enrolled: ${filtered.filter(e => e.sssNumber).length} | SSS Monthly Total: ${fmtNum(filtered.filter(e => e.sssNumber).reduce((s, e) => s + computeSSS(e.salary), 0))}</p>` : ""}
-  ${reportType === "All Benefits" || reportType === "PhilHealth Only" ? `<p style="font-size:13px">PhilHealth Enrolled: ${filtered.filter(e => e.philhealthNumber).length} | PhilHealth Monthly Total: ${fmtNum(filtered.filter(e => e.philhealthNumber).reduce((s, e) => s + computePhilHealth(e.salary), 0))}</p>` : ""}
-  ${reportType === "All Benefits" || reportType === "PAG-IBIG Only" ? `<p style="font-size:13px">PAG-IBIG Enrolled: ${filtered.filter(e => e.pagibigNumber).length} | PAG-IBIG Monthly Total: ${fmtNum(filtered.filter(e => e.pagibigNumber).reduce((s, e) => s + computePagibig(e.salary), 0))}</p>` : ""}
-  ${includeEmployeeDetails ? `
-  <hr style="border:none;border-top:1px solid #ccc;margin:12px 0" />
-  <h2 style="color:#1E3A8A;font-size:16px">Employee Details</h2>
-  <table style="width:100%;border-collapse:collapse;font-size:12px">
-    <thead>
-      <tr style="background:#1E3A8A;color:white">
-        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:left">Name</th>
-        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:left">Status</th>
-        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:left">Hire Date</th>
-        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:left">SSS #</th>
-        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:right">SSS</th>
-        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:left">PH #</th>
-        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:right">PH</th>
-        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:left">PAG-IBIG #</th>
-        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:right">PAG-IBIG</th>
-        <th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:right">Total</th>
-      </tr>
-    </thead>
-    <tbody>${rowsHtml}</tbody>
-  </table>` : ""}
-  <p style="margin-top:20px;font-size:11px;color:#999;text-align:center">HRKonek - Benefits Management Report</p>
-</body>
-</html>`;
+        if (includeEmployeeDetails) {
+          y += 10;
+          const tableHeaders = [
+            "Name",
+            "Status",
+            "Hire Date",
+            "SSS #",
+            "SSS Monthly",
+            "PhilHealth #",
+            "PH Monthly",
+            "PAG-IBIG #",
+            "PAG-IBIG Monthly",
+            "Total Monthly",
+          ];
+          const tableRows = filtered.map((emp) => {
+            const sss = emp.sssNumber ? computeSSS(emp.salary) : 0;
+            const ph = emp.philhealthNumber
+              ? computePhilHealth(emp.salary)
+              : 0;
+            const pg = emp.pagibigNumber ? computePagibig(emp.salary) : 0;
+            return [
+              `${emp.firstName} ${emp.lastName}`,
+              emp.status,
+              fmtDate(new Date(emp.hireDate ?? emp.createdAt)),
+              emp.sssNumber || "Not enrolled",
+              emp.sssNumber ? fmtNum(sss) : "\u2014",
+              emp.philhealthNumber || "Not enrolled",
+              emp.philhealthNumber ? fmtNum(ph) : "\u2014",
+              emp.pagibigNumber || "Not enrolled",
+              emp.pagibigNumber ? fmtNum(pg) : "\u2014",
+              fmtNum(sss + ph + pg),
+            ];
+          });
+
+          autoTable(doc, {
+            startY: y,
+            head: [tableHeaders],
+            body: tableRows,
+            theme: "grid",
+            headStyles: {
+              fillColor: [30, 58, 138],
+              textColor: [255, 255, 255],
+              fontStyle: "bold",
+              fontSize: 8,
+            },
+            bodyStyles: { fontSize: 8 },
+            columnStyles: {
+              0: { cellWidth: 36 },
+              1: { cellWidth: 18 },
+              2: { cellWidth: 22 },
+              3: { cellWidth: 22 },
+              4: { cellWidth: 20, halign: "right" },
+              5: { cellWidth: 22 },
+              6: { cellWidth: 20, halign: "right" },
+              7: { cellWidth: 22 },
+              8: { cellWidth: 22, halign: "right" },
+              9: { cellWidth: 22, halign: "right" },
+            },
+            margin: { top: 14 },
+          });
+        }
+
+        doc.save(`HRKonek_Benefits_Report_${dateFrom}_${dateTo}.pdf`);
+        onSuccess?.("Benefits report downloaded successfully!");
+        onClose();
+        setIsGenerating(false);
+        return;
+      }
+
+      if (reportFormat === "print") {
+        const fmtDate = (d: Date) =>
+          d.toLocaleDateString("en-PH", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          });
+
+        let summaryHtml = "";
+        if (reportType === "All Benefits" || reportType === "SSS Only") {
+          const sssCount = filtered.filter((e) => e.sssNumber).length;
+          const sssTotal = filtered
+            .filter((e) => e.sssNumber)
+            .reduce((s, e) => s + computeSSS(e.salary), 0);
+          summaryHtml += `<p style="font-size:13px;margin:2px 0">SSS Enrolled: ${sssCount} | SSS Monthly Total: ${fmtNum(sssTotal)}</p>`;
+        }
+        if (reportType === "All Benefits" || reportType === "PhilHealth Only") {
+          const phCount = filtered.filter((e) => e.philhealthNumber).length;
+          const phTotal = filtered
+            .filter((e) => e.philhealthNumber)
+            .reduce((s, e) => s + computePhilHealth(e.salary), 0);
+          summaryHtml += `<p style="font-size:13px;margin:2px 0">PhilHealth Enrolled: ${phCount} | PhilHealth Monthly Total: ${fmtNum(phTotal)}</p>`;
+        }
+        if (reportType === "All Benefits" || reportType === "PAG-IBIG Only") {
+          const pgCount = filtered.filter((e) => e.pagibigNumber).length;
+          const pgTotal = filtered
+            .filter((e) => e.pagibigNumber)
+            .reduce((s, e) => s + computePagibig(e.salary), 0);
+          summaryHtml += `<p style="font-size:13px;margin:2px 0">PAG-IBIG Enrolled: ${pgCount} | PAG-IBIG Monthly Total: ${fmtNum(pgTotal)}</p>`;
+        }
+
+        let tableHtml = "";
+        if (includeEmployeeDetails) {
+          const headers = ["Name", "Status", "Hire Date", "SSS #", "SSS Monthly", "PhilHealth #", "PH Monthly", "PAG-IBIG #", "PAG-IBIG Monthly", "Total Monthly"];
+          tableHtml = `<table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="background:#1E3A8A;color:white">${headers.map(h => `<th style="padding:8px 10px;border:1px solid #1E3A8A;text-align:left">${h}</th>`).join("")}</tr></thead>
+            <tbody>`;
+          for (const emp of filtered) {
+            const sss = emp.sssNumber ? computeSSS(emp.salary) : 0;
+            const ph = emp.philhealthNumber ? computePhilHealth(emp.salary) : 0;
+            const pg = emp.pagibigNumber ? computePagibig(emp.salary) : 0;
+            tableHtml += `<tr>
+              <td style="padding:6px 10px;border:1px solid #ccc">${emp.firstName} ${emp.lastName}</td>
+              <td style="padding:6px 10px;border:1px solid #ccc">${emp.status}</td>
+              <td style="padding:6px 10px;border:1px solid #ccc">${fmtDate(new Date(emp.hireDate ?? emp.createdAt))}</td>
+              <td style="padding:6px 10px;border:1px solid #ccc">${emp.sssNumber || "Not enrolled"}</td>
+              <td style="padding:6px 10px;border:1px solid #ccc;text-align:right">${emp.sssNumber ? fmtNum(sss) : "\u2014"}</td>
+              <td style="padding:6px 10px;border:1px solid #ccc">${emp.philhealthNumber || "Not enrolled"}</td>
+              <td style="padding:6px 10px;border:1px solid #ccc;text-align:right">${emp.philhealthNumber ? fmtNum(ph) : "\u2014"}</td>
+              <td style="padding:6px 10px;border:1px solid #ccc">${emp.pagibigNumber || "Not enrolled"}</td>
+              <td style="padding:6px 10px;border:1px solid #ccc;text-align:right">${emp.pagibigNumber ? fmtNum(pg) : "\u2014"}</td>
+              <td style="padding:6px 10px;border:1px solid #ccc;text-align:right;font-weight:bold">${fmtNum(sss + ph + pg)}</td>
+            </tr>`;
+          }
+          tableHtml += "</tbody></table>";
+        }
+
+        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>HRKonek Benefits Report</title>
+          <style>
+            @media print { @page { margin: 15mm; } body { font-family: Arial, sans-serif; } }
+          </style></head>
+          <body style="font-family:Arial,sans-serif;color:#333;padding:20px">
+            <h1 style="color:#1E3A8A;margin-bottom:4px">HRKonek Benefits Report</h1>
+            <p style="color:#666;font-size:13px;margin:2px 0">Report Type: ${reportType} | Date Range: ${dateFrom} to ${dateTo}</p>
+            <p style="color:#666;font-size:13px;margin:2px 0">Generated: ${fmtDate(new Date())}</p>
+            <hr style="border:none;border-top:2px solid #1E3A8A;margin:12px 0" />
+            <h2 style="color:#1E3A8A;font-size:16px">Summary</h2>
+            <p style="font-size:13px">Total Employees in Range: ${filtered.length}</p>
+            ${summaryHtml}
+            ${includeEmployeeDetails ? '<hr style="border:none;border-top:1px solid #ccc;margin:12px 0" /><h2 style="color:#1E3A8A;font-size:16px">Employee Details</h2>' + tableHtml : ""}
+            <p style="margin-top:20px;font-size:11px;color:#999;text-align:center">HRKonek - Benefits Management Report</p>
+          </body></html>`;
 
         const win = window.open("", "_blank");
         if (win) {
@@ -685,14 +827,11 @@ function GenerateReportModal({
           win.focus();
           setTimeout(() => win.print(), 500);
         } else {
-          setReportError(
-            "Popup blocked. Please allow popups for this site to generate PDF reports."
-          );
+          setReportError("Popup blocked. Please allow popups for this site to print reports.");
           setIsGenerating(false);
           return;
         }
-
-        onSuccess?.("Benefits report opened for PDF download!");
+        onSuccess?.("Benefits report opened for printing!");
         onClose();
         setIsGenerating(false);
         return;
@@ -855,20 +994,27 @@ function GenerateReportModal({
       <label className="block text-sm font-medium text-gray-700 mb-2">
         Report Format
       </label>
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      <div className="grid grid-cols-3 gap-3 mb-4">
         <button
           onClick={() => setReportFormat("pdf")}
-          className={`flex items-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors ${reportFormat === "pdf" ? "border-[#1E3A8A] bg-blue-50 text-blue-900" : "border-gray-200 text-gray-700 hover:bg-gray-50"}`}
+          className={`flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors ${reportFormat === "pdf" ? "border-[#1E3A8A] bg-blue-50 text-blue-900" : "border-gray-200 text-gray-700 hover:bg-gray-50"}`}
         >
           <FileText className="w-4 h-4" />
           PDF
         </button>
         <button
           onClick={() => setReportFormat("csv")}
-          className={`flex items-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors ${reportFormat === "csv" ? "border-[#1E3A8A] bg-blue-50 text-blue-900" : "border-gray-200 text-gray-700 hover:bg-gray-50"}`}
+          className={`flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors ${reportFormat === "csv" ? "border-[#1E3A8A] bg-blue-50 text-blue-900" : "border-gray-200 text-gray-700 hover:bg-gray-50"}`}
         >
           <Table2 className="w-4 h-4" />
-          Excel/CSV
+          CSV
+        </button>
+        <button
+          onClick={() => setReportFormat("print")}
+          className={`flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors ${reportFormat === "print" ? "border-[#1E3A8A] bg-blue-50 text-blue-900" : "border-gray-200 text-gray-700 hover:bg-gray-50"}`}
+        >
+          <FileText className="w-4 h-4" />
+          Print
         </button>
       </div>
 
@@ -1511,6 +1657,147 @@ function UpdateBenefitRatesModal({
   );
 }
 
+function TransactionHistoryModal({
+  onClose,
+}: {
+  onClose: () => void;
+}) {
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<{
+    transactions: Transaction[];
+    total: number;
+    totalPages: number;
+    page: number;
+    limit: number;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const limit = 20;
+
+  const fetchPage = useCallback(async (p: number) => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/benefits/transactions?page=${p}&limit=${limit}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      const json = await res.json();
+      setData(json);
+    } catch {
+      setError("Failed to load transaction history.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPage(page);
+  }, [page, fetchPage]);
+
+  const startItem = data ? (data.page - 1) * limit + 1 : 0;
+  const endItem = data ? Math.min(data.page * limit, data.total) : 0;
+
+  return (
+    <ModalWrapper title="Transaction History" onClose={onClose} wide>
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-6 h-6 animate-spin text-[#1E3A8A]" />
+        </div>
+      ) : error ? (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+          <p className="text-red-600 text-xs">{error}</p>
+        </div>
+      ) : data && data.transactions.length === 0 ? (
+        <div className="flex flex-col items-center py-16 text-gray-400 gap-2">
+          <DollarSign className="w-8 h-8 opacity-30" />
+          <p className="text-sm">No transactions found</p>
+        </div>
+      ) : data ? (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-[#1E3A8A]">
+                  <th className="px-4 py-3 text-xs font-semibold text-white text-left uppercase tracking-wider">Employee</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-white text-left uppercase tracking-wider">Benefit</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-white text-left uppercase tracking-wider">Date</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-white text-right uppercase tracking-wider">Amount</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-white text-center uppercase tracking-wider">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {data.transactions.map((tx, i) => (
+                  <tr key={i} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 text-sm text-gray-900 font-medium">{tx.name}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium ${
+                        tx.type === "SSS" ? "bg-blue-100 text-blue-700" :
+                        tx.type === "PhilHealth" ? "bg-red-100 text-red-700" :
+                        "bg-green-100 text-green-700"
+                      }`}>
+                        {tx.type === "SSS" ? <Shield className="w-3 h-3" /> :
+                         tx.type === "PhilHealth" ? <Heart className="w-3 h-3" /> :
+                         <Home className="w-3 h-3" />}
+                        {tx.type}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{tx.date}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900 font-medium text-right">{fmt(tx.amount)}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-block text-xs font-medium rounded-full px-2.5 py-0.5 ${
+                        tx.status === "Processed"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-yellow-100 text-yellow-700"
+                      }`}>
+                        {tx.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+            <p className="text-sm text-gray-500">
+              Showing {startItem}–{endItem} of {data.total} items
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              {Array.from({ length: data.totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={`min-w-[32px] h-8 rounded-lg text-sm font-medium transition-colors ${
+                    p === page
+                      ? "bg-[#1E3A8A] text-white"
+                      : "text-gray-600 hover:bg-gray-100 border border-gray-300"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
+                disabled={page >= data.totalPages}
+                className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </>
+      ) : null}
+    </ModalWrapper>
+  );
+}
+
 export default function BenefitsClient({
   totalEmployees,
   activeEmployees,
@@ -1542,7 +1829,7 @@ export default function BenefitsClient({
 }) {
   const [activeBenefit, setActiveBenefit] = useState<BenefitType>("SSS");
   const [activeModal, setActiveModal] = useState<
-    "contributions" | "report" | "enrollment" | "rates" | null
+    "contributions" | "report" | "enrollment" | "rates" | "history" | null
   >(null);
   const [sssChecked, setSssChecked] = useState(true);
   const [philhealthChecked, setPhilhealthChecked] = useState(true);
@@ -1775,6 +2062,13 @@ export default function BenefitsClient({
                 <h3 className="font-semibold text-gray-900">
                   Recent Transactions
                 </h3>
+                <button
+                  onClick={() => setActiveModal("history")}
+                  className="text-sm font-medium text-[#1E3A8A] hover:text-blue-700 transition-colors flex items-center gap-1.5"
+                >
+                  <History className="w-4 h-4" />
+                  View History
+                </button>
               </div>
               {recentTransactions.length === 0 ? (
                 <div className="flex flex-col items-center py-10 text-gray-400 gap-2">
@@ -1942,6 +2236,11 @@ export default function BenefitsClient({
           expandedSection={expandedSection}
           setExpandedSection={setExpandedSection}
           onSuccess={showToast}
+        />
+      )}
+      {activeModal === "history" && (
+        <TransactionHistoryModal
+          onClose={() => setActiveModal(null)}
         />
       )}
     </div>
