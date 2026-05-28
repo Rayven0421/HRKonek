@@ -351,6 +351,10 @@ export default function EmployeeDetailClient({
       const n = Number(formData.salary);
       if (n > MAX_SALARY) newErrors.salary = `Maximum salary is ₱${MAX_SALARY.toLocaleString('en-PH')}.`;
     }
+    ['dateOfBirth', 'hireDate'].forEach(field => {
+      const val = formData[field];
+      if (val && val.split('-')[0].length > 4) newErrors[field] = 'Year must be 4 digits';
+    });
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -996,8 +1000,13 @@ export default function EmployeeDetailClient({
                 <FormField label="Date of Birth">
                   <input
                     type="date"
+                    max="9999-12-31"
                     value={formData.dateOfBirth || ''}
-                    onChange={(e) => handleFormChange('dateOfBirth', e.target.value)}
+                    onChange={(e) => {
+                      const year = e.target.value.split('-')[0];
+                      if (year && year.length > 4) return;
+                      handleFormChange('dateOfBirth', e.target.value);
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all"
                   />
                 </FormField>
@@ -1062,8 +1071,13 @@ export default function EmployeeDetailClient({
                 <FormField label="Hire Date">
                   <input
                     type="date"
+                    max="9999-12-31"
                     value={formData.hireDate || ''}
-                    onChange={(e) => handleFormChange('hireDate', e.target.value)}
+                    onChange={(e) => {
+                      const year = e.target.value.split('-')[0];
+                      if (year && year.length > 4) return;
+                      handleFormChange('hireDate', e.target.value);
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all"
                   />
                 </FormField>

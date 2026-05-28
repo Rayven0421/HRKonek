@@ -795,12 +795,20 @@ export default function DashboardClient({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">From</label>
-                  <input type="date" value={reportDateFrom} onChange={e => setReportDateFrom(e.target.value)}
+                  <input type="date" max="9999-12-31" value={reportDateFrom} onChange={e => {
+                    const year = e.target.value.split('-')[0];
+                    if (year && year.length > 4) return;
+                    setReportDateFrom(e.target.value);
+                  }}
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">To</label>
-                  <input type="date" value={reportDateTo} onChange={e => setReportDateTo(e.target.value)}
+                  <input type="date" max="9999-12-31" value={reportDateTo} onChange={e => {
+                    const year = e.target.value.split('-')[0];
+                    if (year && year.length > 4) return;
+                    setReportDateTo(e.target.value);
+                  }}
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all" />
                 </div>
               </div>
@@ -960,7 +968,11 @@ export default function DashboardClient({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Review Date<span className="text-blue-600">*</span></label>
-                  <input type="date" value={reviewDate} onChange={e => setReviewDate(e.target.value)}
+                  <input type="date" max="9999-12-31" value={reviewDate} onChange={e => {
+                    const year = e.target.value.split('-')[0];
+                    if (year && year.length > 4) return;
+                    setReviewDate(e.target.value);
+                  }}
                     min={new Date().toISOString().split('T')[0]}
                     className={`w-full px-3 py-2.5 border rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all ${reviewErrors.date ? 'border-red-400' : 'border-gray-300'}`} />
                   {reviewErrors.date && <p className="text-red-600 text-xs font-medium mt-1">{reviewErrors.date}</p>}

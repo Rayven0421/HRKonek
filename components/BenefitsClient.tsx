@@ -975,8 +975,13 @@ function GenerateReportModal({
           <span className="text-xs text-gray-500">From</span>
           <input
             type="date"
+            max="9999-12-31"
             value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
+            onChange={(e) => {
+              const year = e.target.value.split('-')[0];
+              if (year && year.length > 4) return;
+              setDateFrom(e.target.value);
+            }}
             className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] mt-1"
           />
         </div>
@@ -984,8 +989,13 @@ function GenerateReportModal({
           <span className="text-xs text-gray-500">To</span>
           <input
             type="date"
+            max="9999-12-31"
             value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
+            onChange={(e) => {
+              const year = e.target.value.split('-')[0];
+              if (year && year.length > 4) return;
+              setDateTo(e.target.value);
+            }}
             className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] mt-1"
           />
         </div>
@@ -1237,8 +1247,13 @@ function BulkEnrollmentModal({
       </label>
       <input
         type="date"
+        max="9999-12-31"
         value={effectiveDate}
-        onChange={(e) => setEffectiveDate(e.target.value)}
+        onChange={(e) => {
+          const year = e.target.value.split('-')[0];
+          if (year && year.length > 4) return;
+          setEffectiveDate(e.target.value);
+        }}
         className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] mb-4"
       />
 

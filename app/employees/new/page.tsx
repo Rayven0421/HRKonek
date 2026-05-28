@@ -46,7 +46,8 @@ const InputField = ({
   placeholder = "", 
   value, 
   onChange,
-  error
+  error,
+  max,
 }: { 
   label: string; 
   name: string; 
@@ -55,11 +56,13 @@ const InputField = ({
   value: string;
   onChange: (val: string) => void;
   error?: string;
+  max?: string;
 }) => (
   <div className="flex flex-col gap-1">
     <label className="text-sm font-medium text-gray-700">{label}</label>
     <input
       type={type}
+      max={max}
       className={`w-full px-3 py-2.5 border rounded-lg text-gray-900 placeholder-gray-400 text-sm bg-white
         focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all ${
           error ? "border-red-500 bg-red-50" : "border-gray-300"
@@ -67,7 +70,11 @@ const InputField = ({
       placeholder={placeholder}
       value={value}
       onInput={handleSafeInput}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(e) => {
+        const year = e.target.value.split('-')[0];
+        if (year && year.length > 4) return;
+        onChange(e.target.value);
+      }}
     />
     {error && <span className="text-xs font-medium text-red-600">{error}</span>}
   </div>
@@ -106,6 +113,7 @@ export default function NewEmployeePage() {
     if (!formData.role) errors.role = "Position is required";
     if (!formData.department) errors.department = "Department is required";
     if (!formData.hireDate) errors.hireDate = "Hire date is required";
+    else if (formData.hireDate.split('-')[0].length > 4) errors.hireDate = "Year must be 4 digits";
 
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -292,6 +300,7 @@ export default function NewEmployeePage() {
                   label="Start Date" 
                   name="hireDate" 
                   type="date" 
+                  max="9999-12-31"
                   value={formData.hireDate} 
                   onChange={(val) => handleInputChange("hireDate", val)} 
                   error={fieldErrors.hireDate}

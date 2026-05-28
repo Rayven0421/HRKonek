@@ -30,7 +30,10 @@ export function sanitizeNumber(value: unknown): number | null {
 
 export function sanitizeDate(value: unknown): string | null {
   if (value === null || value === undefined || value === '') return null
-  const date = new Date(String(value))
+  const str = String(value)
+  const year = str.split('-')[0]
+  if (year && year.length > 4) return null
+  const date = new Date(str)
   if (isNaN(date.getTime())) return null
   return date.toISOString()
 }
@@ -80,7 +83,7 @@ export function sanitizeMonth(value: unknown): string | null {
   return ALLOWED_MONTHS.includes(str) ? str : null
 }
 
-export function sanitizeYear(value: unknown): string | null {
+export function sanitizeYear(value: unknown): string | null { // Sanitize this shit haha get it .ts hehe
   const str = sanitizeString(value)
   if (!str) return null
   const yearRegex = /^\d{4}$/
