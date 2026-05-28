@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   MoreVertical, Eye, Calendar, ClipboardList,
@@ -9,7 +10,8 @@ import {
   Clock, AlertCircle, Circle, Search, X,
   Filter, ChevronDown, ChevronLeft, ChevronRight,
   Shield, Heart, Home, FileText, Download,
-  Mail, Phone, User, Briefcase
+  Mail, Phone, User, Briefcase, Archive,
+  Loader2, RotateCcw
 } from 'lucide-react';
 import SearchableSelect from '@/components/SearchableSelect';
 import { DEPARTMENTS, POSITIONS } from '@/lib/constants';
@@ -832,77 +834,6 @@ function SelectField({
   );
 }
 
-// ── Reject Confirmation Dialog ─────────────────────────────────────────────────
-function RejectConfirmDialog({
-  applicant,
-  onClose,
-  onConfirm,
-  isRejecting,
-  rejectionNote,
-  onNoteChange,
-}: {
-  applicant: Applicant;
-  onClose: () => void;
-  onConfirm: () => void;
-  isRejecting: boolean;
-  rejectionNote: string;
-  onNoteChange: (note: string) => void;
-}) {
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [onClose]);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-        <div className="text-center mb-4">
-          <XCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
-          <h3 className="font-bold text-gray-900 text-lg mb-2">Reject Applicant?</h3>
-          <p className="text-sm text-gray-500">
-            This will archive {applicant.firstName} {applicant.lastName} as rejected. Their ID ({applicant.applicantId || 'A???'}) is permanently reserved.
-          </p>
-        </div>
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Rejection Notes</label>
-          <textarea
-            value={rejectionNote}
-            onChange={e => onNoteChange(e.target.value)}
-            placeholder="Optional notes about this rejection..."
-            rows={3}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all resize-none"
-          />
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            disabled={isRejecting}
-            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={isRejecting}
-            className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
-          >
-            {isRejecting ? (
-              <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-            ) : 'Yes, Reject'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Main table ─────────────────────────────────────────────────────────────────
 export default function ApplicantTable({ applicants }: { applicants: Applicant[] }) {
   const router = useRouter();
@@ -913,10 +844,12 @@ export default function ApplicantTable({ applicants }: { applicants: Applicant[]
 
   const [viewingApplicant, setViewingApplicant] = useState<Applicant | null>(null);
   const [convertingApplicant, setConvertingApplicant] = useState<Applicant | null>(null);
-  const [rejectingApplicant, setRejectingApplicant]   = useState<Applicant | null>(null);
-  const [rejectionNote,    setRejectionNote]     = useState('');
-  const [isConverting,     setIsConverting]     = useState(false);
-  const [isRejecting,      setIsRejecting]      = useState(false);
+  const [rejectingApplicant, setRejectingApplicant] = useState<{ id: string; name: string } | null>(null);
+  const [rejectNote, setRejectNote] = useState('');
+  const [rejectError, setRejectError] = useState('');
+  const [rejectToast, setRejectToast] = useState<string | null>(null);
+  const [isConverting, setIsConverting] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
   const [successToast,     setSuccessToast]     = useState<{
     show: boolean;
     message: string;
@@ -1019,30 +952,42 @@ export default function ApplicantTable({ applicants }: { applicants: Applicant[]
     }
   }
 
-  async function handleReject(applicant: Applicant) {
+  const handleRejectClick = (applicantId: string, applicantName: string) => {
+    setRejectingApplicant({ id: applicantId, name: applicantName });
+    setRejectNote('');
+    setRejectError('');
+    setMenuAnchor(null);
+  };
+
+  const handleConfirmReject = async () => {
+    if (!rejectingApplicant) return;
     setIsRejecting(true);
+    setRejectError('');
     try {
-      const res = await fetch(`/api/applicants/${applicant.id}/archive`, {
+      const res = await fetch(`/api/applicants/${rejectingApplicant.id}/archive`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           reason: 'Rejected',
-          note: rejectionNote || undefined,
+          note: rejectNote.trim() || null,
         }),
       });
+      const data = await res.json().catch(() => ({ message: 'Unexpected server response' }));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || data.message || 'Failed to reject applicant');
+        setRejectError(data.message || 'Failed to reject applicant. Please try again.');
+        return;
       }
-      updateApplicantStatus(applicant.id, 'Rejected');
-    } catch (err) {
-      console.error('Reject error:', err);
+      setLocalApplicants(prev => prev.filter(a => a.id !== rejectingApplicant.id));
+      setRejectingApplicant(null);
+      setRejectNote('');
+      setRejectToast(`${rejectingApplicant.name} has been moved to the archive.`);
+      setTimeout(() => setRejectToast(null), 4000);
+    } catch {
+      setRejectError('Connection error. Please check your network.');
+    } finally {
+      setIsRejecting(false);
     }
-    setRejectingApplicant(null);
-    setRejectionNote('');
-    setIsRejecting(false);
-    setMenuAnchor(null);
-  }
+  };
 
   return (
     <>
@@ -1052,6 +997,29 @@ export default function ApplicantTable({ applicants }: { applicants: Applicant[]
           employeeId={successToast.employeeId}
           onClose={() => setSuccessToast(null)}
         />
+      )}
+
+      {rejectToast && (
+        <div className="fixed top-4 right-4 z-[100] bg-red-50 border border-red-200 rounded-xl shadow-xl p-4 pr-12 max-w-md animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-start gap-3">
+            <Archive className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-red-800">{rejectToast}</p>
+              <Link
+                href="/applicants/archive"
+                className="inline-flex items-center gap-1 text-sm font-medium text-red-700 hover:text-red-800 underline mt-1"
+              >
+                View Archive <ExternalLink className="w-3 h-3" />
+              </Link>
+            </div>
+          </div>
+          <button
+            onClick={() => setRejectToast(null)}
+            className="absolute top-3 right-3 text-red-500 hover:text-red-700"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       )}
 
       {viewingApplicant && (
@@ -1083,14 +1051,71 @@ export default function ApplicantTable({ applicants }: { applicants: Applicant[]
       )}
 
       {rejectingApplicant && (
-        <RejectConfirmDialog
-          applicant={rejectingApplicant}
-          onClose={() => { setRejectingApplicant(null); setRejectionNote(''); }}
-          onConfirm={() => handleReject(rejectingApplicant)}
-          isRejecting={isRejecting}
-          rejectionNote={rejectionNote}
-          onNoteChange={setRejectionNote}
-        />
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex flex-col items-center text-center mb-5">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-3">
+                <XCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="font-bold text-gray-900 text-lg">Reject Applicant?</h3>
+              <p className="text-gray-500 text-sm mt-1">
+                <span className="font-medium text-gray-700">{rejectingApplicant.name}</span>{' '}
+                will be moved to the Applicant Archive. This can be undone from the archive page.
+              </p>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Rejection Note{' '}
+                <span className="text-gray-400 font-normal ml-1">(optional)</span>
+              </label>
+              <textarea
+                value={rejectNote}
+                onChange={e => setRejectNote(e.target.value)}
+                placeholder="e.g. Position filled, skills mismatch..."
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-red-400/30 focus:border-red-400 transition-all resize-none"
+              />
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 flex items-start gap-2">
+              <Archive className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-blue-700">
+                The applicant record is never deleted. You can restore them from Applicants &rarr; Archive at any time.
+              </p>
+            </div>
+            {rejectError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                <p className="text-red-600 text-xs">{rejectError}</p>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setRejectingApplicant(null); setRejectNote(''); setRejectError(''); }}
+                disabled={isRejecting}
+                className="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 bg-white px-4 py-2.5 rounded-lg font-medium text-sm transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmReject}
+                disabled={isRejecting}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {isRejecting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Rejecting...
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="w-4 h-4" />
+                    Confirm Reject
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {docDialog && (
@@ -1181,7 +1206,7 @@ export default function ApplicantTable({ applicants }: { applicants: Applicant[]
                 )}
                 {showReject && (
                   <button
-                    onClick={() => { setRejectingApplicant(app); setMenuAnchor(null); }}
+                    onClick={() => handleRejectClick(app.id, `${app.firstName} ${app.lastName}`)}
                     className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <XCircle className="w-4 h-4 text-red-500" />

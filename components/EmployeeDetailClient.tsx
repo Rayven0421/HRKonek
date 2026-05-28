@@ -659,8 +659,8 @@ export default function EmployeeDetailClient({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {contributionHistory.map((row) => (
-                      <tr key={row.month} className="hover:bg-gray-50 transition-colors">
+                    {contributionHistory.map((row, i) => (
+                      <tr key={`${row.month}-${i}`} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
                           {row.month}
                         </td>
@@ -800,7 +800,7 @@ export default function EmployeeDetailClient({
                 </thead>
                 <tbody>
                   {printHistory.map((row, idx) => (
-                    <tr key={row.month} style={{ background: idx % 2 === 0 ? '#fff' : '#F9FAFB' }}>
+                    <tr key={`${row.month}-${idx}`} style={{ background: idx % 2 === 0 ? '#fff' : '#F9FAFB' }}>
                       <td style={{ padding: '6px 12px', border: '1px solid #E5E7EB', fontWeight: 500, color: '#111827' }}>{row.month}</td>
                       <td style={{ padding: '6px 12px', border: '1px solid #E5E7EB', textAlign: 'right', color: '#4B5563' }}>{row.sss !== null ? fmt(row.sss) : '—'}</td>
                       <td style={{ padding: '6px 12px', border: '1px solid #E5E7EB', textAlign: 'right', color: '#4B5563' }}>{row.phil !== null ? fmt(row.phil) : '—'}</td>
