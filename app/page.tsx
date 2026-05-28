@@ -1,18 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, Users, Briefcase, AlertCircle, Loader2 } from "lucide-react";
 
 export default function Home() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +26,7 @@ export default function Home() {
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     try {
       const res = await fetch('/api/auth/login', {
@@ -47,20 +46,43 @@ export default function Home() {
 
       if (!res.ok) {
         setLoginError(data.message || 'Login failed. Please try again.');
+        setIsSubmitting(false);
         return;
       }
 
-      router.push('/dashboard');
+      if (data.user) {
+        try { sessionStorage.setItem('hrkonek_user', JSON.stringify(data.user)) } catch {}
+      }
+      setIsNavigating(true);
+      window.location.href = '/dashboard';
 
     } catch {
       setLoginError('Connection error. Please check your network and try again.');
-    } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
     <div className="relative min-h-screen w-full bg-white flex items-center justify-center overflow-hidden font-sans">
+
+      {/* ── Full‑screen loading overlay (only after validation passes) ── */}
+      {isNavigating && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white">
+          <div className="flex flex-col items-center gap-5">
+            <div className="w-20 h-20 rounded-full border-2 border-[#1E3A8A] flex items-center justify-center bg-[#f8faff] shadow-sm overflow-hidden">
+              <img
+                src="/hrkonek-icon.png"
+                alt="HRKonek"
+                className="w-full h-full object-contain p-1.5"
+              />
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="w-8 h-8 animate-spin text-[#1E3A8A]" />
+              <p className="text-sm font-medium text-gray-600">Signing you in...</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Dark blue blob — top left, viewport-relative, fully responsive */}
       <svg
@@ -198,10 +220,10 @@ export default function Home() {
           {/* Login Button */}
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isSubmitting}
             className="w-full bg-[#1E3A8A] hover:bg-[#152e6f] disabled:opacity-70 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg mt-1"
           >
-            {isLoading ? (
+            {isSubmitting ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
                 Signing in...

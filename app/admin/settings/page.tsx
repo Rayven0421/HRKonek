@@ -1,24 +1,11 @@
 "use client"
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import NotificationBell from '@/components/NotificationBell'
 import NavbarUserMenu from '@/components/NavbarUserMenu'
 import { Bell, Shield, Database, Info } from 'lucide-react'
 
 export default function SettingsPage() {
-  const router = useRouter()
-
-  useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem('hrkonek_user')
-      if (!stored) router.push('/')
-    } catch {
-      router.push('/')
-    }
-  }, [router])
-
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
       <Sidebar />

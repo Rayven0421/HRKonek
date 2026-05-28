@@ -17,7 +17,7 @@ type AdminUser = {
 
 export default function AdminProfilePage() {
   const router = useRouter()
-  const [user] = useState<AdminUser | null>(() => {
+  const [user, setUser] = useState<AdminUser | null>(() => {
     try {
       if (typeof window === 'undefined') return null
       const stored = sessionStorage.getItem('hrkonek_user')
@@ -28,9 +28,18 @@ export default function AdminProfilePage() {
   })
 
   useEffect(() => {
-    if (!user) {
-      router.push('/')
-    }
+    if (user) return
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.user) {
+          setUser(data.user)
+          try { sessionStorage.setItem('hrkonek_user', JSON.stringify(data.user)) } catch {}
+        } else {
+          router.push('/')
+        }
+      })
+      .catch(() => router.push('/'))
   }, [user, router])
 
   if (!user) return null
