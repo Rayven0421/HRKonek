@@ -64,15 +64,29 @@ export async function POST(request: Request) {
 
     const newApplicantId = crypto.randomUUID()
 
+    const lastAppRows = await prisma.$queryRaw<{ applicantId: string | null }[]>`
+      SELECT applicantId FROM Applicant
+      WHERE applicantId IS NOT NULL
+        AND applicantId LIKE 'A%'
+      ORDER BY CAST(SUBSTR(applicantId, 2) AS INTEGER) DESC
+      LIMIT 1
+    `
+    let nextAppNum = 1
+    if (lastAppRows.length > 0 && lastAppRows[0].applicantId) {
+      const lastNum = parseInt(lastAppRows[0].applicantId.replace('A', ''), 10)
+      if (!isNaN(lastNum)) nextAppNum = lastNum + 1
+    }
+    const newDisplayId = `A${String(nextAppNum).padStart(3, '0')}`
+
     await prisma.$executeRaw`
       INSERT INTO Applicant (
-        id, firstName, lastName, email, phone, address,
+        id, applicantId, firstName, lastName, email, phone, address,
         position, expectedSalary, yearsOfExperience,
         sssNumber, pagibigNumber, philhealthNumber,
         tinNumber, resumeUrl, coverLetterUrl, otherDocsUrl,
         status, appliedAt, createdAt, updatedAt
       ) VALUES (
-        ${newApplicantId}, ${firstName}, ${lastName}, ${email},
+        ${newApplicantId}, ${newDisplayId}, ${firstName}, ${lastName}, ${email},
         ${phone ?? null}, ${address ?? null}, ${position},
         ${expectedSalary ?? null}, ${yearsOfExperience ?? null},
         ${sssNumber ?? null}, ${pagibigNumber ?? null},

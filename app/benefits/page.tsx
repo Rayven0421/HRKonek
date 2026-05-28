@@ -55,9 +55,10 @@ async function getBenefitsData() {
   }>>`
     SELECT id, firstName, lastName, salary, status,
            sssNumber, philhealthNumber, pagibigNumber,
-           hireDate, createdAt
-    FROM Employee
-  `
+             hireDate, createdAt
+     FROM Employee
+     WHERE isArchived = 0
+   `
 
   const totalEmployees = employees.length;
   const activeEmployees = employees.filter((e) => e.status === "Active").length;
@@ -97,6 +98,7 @@ async function getBenefitsData() {
            sssNumber, philhealthNumber, pagibigNumber,
            hireDate, createdAt
     FROM Employee
+    WHERE isArchived = 0
     ORDER BY hireDate DESC
     LIMIT 8
   `

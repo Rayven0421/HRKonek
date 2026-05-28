@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       philhealthNumber: string | null; pagibigNumber: string | null;
     }>>`
       SELECT id, sssNumber, philhealthNumber, pagibigNumber
-      FROM Employee WHERE status = 'Active'
+      FROM Employee WHERE status = 'Active' AND isArchived = 0
     `
 
     const duplicateCheck = await prisma.$queryRaw<[{ count: bigint }]>`

@@ -58,7 +58,20 @@ export async function POST(request: Request) {
     const tinNumber = sanitizeString(employeeData.tinNumber)
 
     const newEmployeeId = crypto.randomUUID()
-    const displayId = `E${Date.now().toString().slice(-4)}`
+
+    const lastIdRows = await prisma.$queryRaw<{ employeeId: string | null }[]>`
+      SELECT employeeId FROM Employee
+      WHERE employeeId IS NOT NULL
+        AND employeeId LIKE 'E%'
+      ORDER BY CAST(SUBSTR(employeeId, 2) AS INTEGER) DESC
+      LIMIT 1
+    `
+    let nextNumber = 1
+    if (lastIdRows.length > 0 && lastIdRows[0].employeeId) {
+      const lastNum = parseInt(lastIdRows[0].employeeId.replace('E', ''), 10)
+      if (!isNaN(lastNum)) nextNumber = lastNum + 1
+    }
+    const displayId = `E${String(nextNumber).padStart(3, '0')}`
 
     await prisma.$executeRaw`
       INSERT INTO Employee (

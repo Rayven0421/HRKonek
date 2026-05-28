@@ -32,6 +32,7 @@ export default async function EmployeeDetailPage({
       tinNumber: string | null; employeeId: string | null;
       employmentType: string | null; profileImage: string | null;
       dateOfBirth: Date | null;
+      isArchived: boolean; archivedAt: Date | null;
       createdAt: Date; updatedAt: Date;
     }>>`
       SELECT id, firstName, lastName, email, phone,
@@ -39,6 +40,7 @@ export default async function EmployeeDetailPage({
              hireDate, sssNumber, philhealthNumber,
              pagibigNumber, tinNumber, employeeId,
              employmentType, profileImage, dateOfBirth,
+             isArchived, archivedAt,
              createdAt, updatedAt
       FROM Employee WHERE id = ${id} LIMIT 1
     `
@@ -61,6 +63,8 @@ export default async function EmployeeDetailPage({
       dateOfBirth: emp.dateOfBirth?.toISOString() ?? null,
       createdAt: emp.createdAt.toISOString(),
       updatedAt: emp.updatedAt.toISOString(),
+      isArchived: Boolean(emp.isArchived),
+      archivedAt: emp.archivedAt?.toISOString() ?? null,
     }
 
     return (

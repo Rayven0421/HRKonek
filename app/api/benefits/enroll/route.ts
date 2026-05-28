@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     }>>`
       SELECT id, sssNumber, philhealthNumber, pagibigNumber
       FROM Employee
+      WHERE isArchived = 0
     `
 
     const scope = sanitizeString(body.scope)

@@ -4,7 +4,7 @@ import NotificationBell from "@/components/NotificationBell";
 import NavbarUserMenu from "@/components/NavbarUserMenu";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Plus, AlertCircle } from "lucide-react";
+import { Plus, AlertCircle, Archive } from "lucide-react";
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +26,8 @@ export default async function EmployeesPage() {
              department, role, status, hireDate,
              salary, address, employeeId, createdAt
       FROM Employee
-      ORDER BY createdAt DESC
+      WHERE isArchived = 0
+      ORDER BY CAST(SUBSTR(COALESCE(employeeId,'E0'),2) AS INTEGER) ASC
     `
   } catch (error) {
     console.error('Employees page query error:', error)
@@ -64,13 +65,22 @@ export default async function EmployeesPage() {
                 Manage and track all employees
               </p>
             </div>
-            <Link
-              href="/employees/new"
-              className="flex items-center justify-center gap-2 bg-[#1E3A8A] hover:bg-blue-900 text-white px-5 py-2.5 rounded-lg font-medium text-sm transition-colors shadow-sm w-full sm:w-auto"
-            >
-              <Plus className="w-4 h-4" />
-              Add Employee
-            </Link>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Link
+                href="/employees/archive"
+                className="flex items-center justify-center gap-2 border border-gray-300 text-gray-700 hover:bg-gray-50 bg-white px-4 py-2.5 rounded-lg font-medium text-sm transition-colors w-full sm:w-auto"
+              >
+                <Archive className="w-4 h-4" />
+                <span className="hidden sm:inline">Archived</span>
+              </Link>
+              <Link
+                href="/employees/new"
+                className="flex items-center justify-center gap-2 bg-[#1E3A8A] hover:bg-blue-900 text-white px-5 py-2.5 rounded-lg font-medium text-sm transition-colors shadow-sm w-full sm:w-auto"
+              >
+                <Plus className="w-4 h-4" />
+                Add Employee
+              </Link>
+            </div>
           </div>
 
           {pageError && (

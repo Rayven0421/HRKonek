@@ -8,7 +8,8 @@ import NavbarUserMenu from "@/components/NavbarUserMenu";
 import {
   Mail, Phone, MapPin, Calendar, Briefcase, CreditCard,
   Shield, Heart, Home, ChevronLeft,
-  Printer, X, Save, Camera, AlertCircle, CheckCircle
+  Printer, X, Save, Camera, AlertCircle, CheckCircle,
+  Archive, RotateCcw
 } from "lucide-react";
 import SearchableSelect from "@/components/SearchableSelect";
 import { DEPARTMENTS, POSITIONS } from "@/lib/constants";
@@ -33,6 +34,8 @@ interface Employee {
   salary: number | null;
   hireDate: string;
   profileImage: string | null;
+  isArchived: boolean;
+  archivedAt: string | null;
 }
 
 const VALIDATIONS: Record<string, { regex: RegExp; message: string; placeholder: string }> = {
@@ -164,6 +167,8 @@ export default function EmployeeDetailClient({
   const [removeImage, setRemoveImage] = useState(false);
   const [imageError, setImageError] = useState('');
   const [hasAttemptedSave, setHasAttemptedSave] = useState(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const employee = employeeData;
@@ -495,6 +500,32 @@ export default function EmployeeDetailClient({
               </div>
             </div>
             <div className="flex gap-2 sm:flex-shrink-0">
+              {employee.isArchived ? (
+                <button
+                  onClick={async () => {
+                    setIsArchiving(true);
+                    try {
+                      const res = await fetch(`/api/employees/${employee.id}/archive`, { method: 'PATCH' });
+                      if (res.ok) window.location.reload();
+                    } finally {
+                      setIsArchiving(false);
+                    }
+                  }}
+                  disabled={isArchiving}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  {isArchiving ? 'Restoring...' : 'Restore Employee'}
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowArchiveConfirm(true)}
+                  className="flex items-center gap-2 border border-red-300 text-red-700 hover:bg-red-50 bg-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  <Archive className="w-4 h-4" />
+                  Archive
+                </button>
+              )}
               <button
                 onClick={openEditModal}
                 className="flex items-center gap-2 bg-[#1E3A8A] hover:bg-[#152e6f] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
@@ -1179,6 +1210,51 @@ export default function EmployeeDetailClient({
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Archive Confirmation Modal */}
+      {showArchiveConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center">
+            <Archive className="w-12 h-12 text-red-500 mx-auto mb-3" />
+            <h3 className="font-bold text-gray-900 text-lg mb-2">Archive Employee?</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              This will mark {employee.firstName} {employee.lastName} as archived (Inactive).
+              They can be restored later from the Archived Employees page.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowArchiveConfirm(false)}
+                disabled={isArchiving}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setIsArchiving(true);
+                  try {
+                    const res = await fetch(`/api/employees/${employee.id}/archive`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ reason: 'Other' }),
+                    });
+                    if (res.ok) {
+                      setShowArchiveConfirm(false);
+                      window.location.reload();
+                    }
+                  } finally {
+                    setIsArchiving(false);
+                  }
+                }}
+                disabled={isArchiving}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                {isArchiving ? 'Archiving...' : 'Yes, Archive'}
+              </button>
+            </div>
           </div>
         </div>
       )}

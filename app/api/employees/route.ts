@@ -80,23 +80,19 @@ export async function POST(request: Request) {
       )
     }
 
-    const lastEmployeeRows = await prisma.$queryRaw<Array<{ employeeId: string | null }>>`
+    const lastIdRows = await prisma.$queryRaw<{ employeeId: string | null }[]>`
       SELECT employeeId FROM Employee
       WHERE employeeId IS NOT NULL
-      ORDER BY employeeId DESC LIMIT 1
+        AND employeeId LIKE 'E%'
+      ORDER BY CAST(SUBSTR(employeeId, 2) AS INTEGER) DESC
+      LIMIT 1
     `
-
-    let nextIdNumber = 1
-    if (lastEmployeeRows.length > 0) {
-      const lastId = lastEmployeeRows[0].employeeId
-      if (lastId && lastId.startsWith('E')) {
-        const lastNumber = parseInt(lastId.substring(1))
-        if (!isNaN(lastNumber)) {
-          nextIdNumber = lastNumber + 1
-        }
-      }
+    let nextNumber = 1
+    if (lastIdRows.length > 0 && lastIdRows[0].employeeId) {
+      const lastNum = parseInt(lastIdRows[0].employeeId.replace('E', ''), 10)
+      if (!isNaN(lastNum)) nextNumber = lastNum + 1
     }
-    const generatedEmployeeId = `E${nextIdNumber.toString().padStart(3, '0')}`
+    const generatedEmployeeId = `E${String(nextNumber).padStart(3, '0')}`
 
     const newEmployeeId = crypto.randomUUID()
     await prisma.$executeRaw`
@@ -140,5 +136,37 @@ export async function POST(request: Request) {
     console.error('Create employee error:', error)
     const { message, status } = getFriendlyError(error)
     return Response.json({ message }, { status })
+  }
+}
+
+export async function GET(request: Request) {
+  const user = await requireApiAuth()
+  if (!user) {
+    return Response.json({ message: 'Unauthorized' }, { status: 401 })
+  }
+  try {
+    const url = new URL(request.url)
+    const archived = url.searchParams.get('archived') === '1'
+
+    const employees = await prisma.$queryRaw<Array<{
+      id: string; firstName: string; lastName: string;
+      email: string; phone: string | null;
+      department: string; role: string; status: string;
+      employeeId: string | null;
+      archivedAt: Date | null;
+      archiveReason: string | null; archiveNote: string | null;
+    }>>`
+      SELECT id, firstName, lastName, email, phone,
+             department, role, status, employeeId,
+             archivedAt, archiveReason, archiveNote
+      FROM Employee
+      WHERE isArchived = ${archived ? 1 : 0}
+      ORDER BY archivedAt DESC, createdAt DESC
+    `
+
+    return Response.json(employees)
+  } catch (error) {
+    console.error('Get employees error:', error)
+    return Response.json({ message: 'Something went wrong' }, { status: 500 })
   }
 }

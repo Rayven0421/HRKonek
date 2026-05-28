@@ -73,7 +73,7 @@ export async function GET() {
 
     const recentHiresResult = await prisma.$queryRaw<[{ count: bigint }]>`
       SELECT COUNT(*) as count FROM Employee
-      WHERE createdAt >= ${sevenDaysAgo}`
+      WHERE isArchived = 0 AND createdAt >= ${sevenDaysAgo}`
     const recentHires = Number(recentHiresResult[0].count)
 
     if (recentHires > 0) {
@@ -91,7 +91,7 @@ export async function GET() {
 
     const missingIdsResult = await prisma.$queryRaw<[{ count: bigint }]>`
       SELECT COUNT(*) as count FROM Employee
-      WHERE status = 'Active'
+      WHERE status = 'Active' AND isArchived = 0
       AND (
         sssNumber IS NULL OR sssNumber = '' OR
         philhealthNumber IS NULL OR philhealthNumber = '' OR

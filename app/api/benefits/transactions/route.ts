@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
              sssNumber, philhealthNumber, pagibigNumber,
              hireDate, createdAt
       FROM Employee
+      WHERE isArchived = 0
       ORDER BY hireDate DESC, createdAt DESC
     `
 

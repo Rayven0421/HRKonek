@@ -3,6 +3,35 @@ import { sanitizeApplicantStatus, getFriendlyError } from '@/lib/sanitize'
 import { createNotification } from '@/lib/notifications'
 import { requireApiAuth } from '@/lib/auth'
 
+export async function GET(request: Request) {
+  const user = await requireApiAuth()
+  if (!user) {
+    return Response.json({ message: 'Unauthorized' }, { status: 401 })
+  }
+  try {
+    const url = new URL(request.url)
+    const archived = url.searchParams.get('archived') === '1'
+
+    const applicants = await prisma.$queryRaw<Array<{
+      id: string; firstName: string; lastName: string;
+      position: string; status: string;
+      applicantId: string | null;
+      archivedAt: Date | null;
+    }>>`
+      SELECT id, firstName, lastName, position, status,
+             applicantId, archivedAt
+      FROM Applicant
+      WHERE isArchived = ${archived ? 1 : 0}
+      ORDER BY archivedAt DESC, createdAt DESC
+    `
+
+    return Response.json(applicants)
+  } catch (error) {
+    console.error('Get applicants error:', error)
+    return Response.json({ error: 'Something went wrong' }, { status: 500 })
+  }
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }

@@ -15,7 +15,7 @@ export default async function DashboardPage() {
 
   try {
     const totalEmployeesResult = await prisma.$queryRaw<[{ count: bigint }]>`
-      SELECT COUNT(*) as count FROM Employee
+      SELECT COUNT(*) as count FROM Employee WHERE isArchived = 0
     `
     totalEmployees = Number(totalEmployeesResult[0].count)
 
@@ -28,6 +28,7 @@ export default async function DashboardPage() {
       SELECT id, firstName, lastName, email, phone,
              department, role, status, createdAt
       FROM Employee
+      WHERE isArchived = 0
       ORDER BY createdAt DESC LIMIT 5
     `
 
@@ -35,6 +36,7 @@ export default async function DashboardPage() {
       SELECT id, firstName, lastName, department,
              role, status, createdAt, salary
       FROM Employee
+      WHERE isArchived = 0
       ORDER BY createdAt ASC
     `
 
@@ -48,7 +50,7 @@ export default async function DashboardPage() {
     try {
       const activeBenefitsResult = await prisma.$queryRaw<[{ count: bigint }]>`
         SELECT COUNT(*) as count FROM Employee
-        WHERE status = 'Active'
+        WHERE status = 'Active' AND isArchived = 0
         AND (
           (sssNumber IS NOT NULL AND sssNumber != '') OR
           (philhealthNumber IS NOT NULL AND philhealthNumber != '') OR
@@ -63,7 +65,7 @@ export default async function DashboardPage() {
 
       const lastMonthBenefitsResult = await prisma.$queryRaw<[{ count: bigint }]>`
         SELECT COUNT(*) as count FROM Employee
-        WHERE status = 'Active'
+        WHERE status = 'Active' AND isArchived = 0
         AND hireDate < ${thisMonthStart.toISOString()}
         AND (
           (sssNumber IS NOT NULL AND sssNumber != '') OR

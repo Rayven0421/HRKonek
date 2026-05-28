@@ -5,11 +5,13 @@ import Sidebar from '@/components/Sidebar';
 import ApplicantTable from '@/components/ApplicantTable';
 import NotificationBell from '@/components/NotificationBell';
 import NavbarUserMenu from '@/components/NavbarUserMenu';
-import { FileText, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+import { FileText, AlertCircle, Archive } from 'lucide-react';
 
 export default async function ApplicantsPage() {
   let rawApplicants: Array<{
-    id: string; firstName: string; lastName: string;
+    id: string; applicantId: string | null;
+    firstName: string; lastName: string;
     email: string | null; phone: string | null;
     address: string | null; position: string;
     expectedSalary: string | null;
@@ -26,13 +28,14 @@ export default async function ApplicantsPage() {
 
   try {
     rawApplicants = await prisma.$queryRaw`
-      SELECT id, firstName, lastName, email, phone,
+      SELECT id, applicantId, firstName, lastName, email, phone,
              address, position, expectedSalary,
              yearsOfExperience, sssNumber, pagibigNumber,
              philhealthNumber, tinNumber, resumeUrl,
              coverLetterUrl, otherDocsUrl, status,
              appliedAt, createdAt, convertedEmployeeId
       FROM Applicant
+      WHERE isArchived = 0
       ORDER BY appliedAt ASC
     `
   } catch (error) {
@@ -45,7 +48,7 @@ export default async function ApplicantsPage() {
     }
   }
 
-  const applicants = rawApplicants.map((a, index) => ({
+  const applicants = rawApplicants.map((a) => ({
     ...a,
     email:             a.email             ?? '',
     phone:             a.phone             ?? undefined,
@@ -60,7 +63,7 @@ export default async function ApplicantsPage() {
     coverLetterUrl:    a.coverLetterUrl    ?? undefined,
     otherDocsUrl:      a.otherDocsUrl      ?? undefined,
     convertedEmployeeId: a.convertedEmployeeId ?? undefined,
-    applicantId: `A${String(index + 1).padStart(3, '0')}`,
+    applicantId:       a.applicantId ?? undefined,
   }));
 
   const defaultSorted = [...applicants].reverse();
@@ -122,6 +125,16 @@ export default async function ApplicantsPage() {
               <span className="text-sm text-gray-500">Hired</span>
               <span className="text-sm font-bold text-gray-900">{hiredCount}</span>
             </div>
+          </div>
+
+          <div className="flex justify-end mb-3">
+            <Link
+              href="/applicants/archive"
+              className="flex items-center gap-2 border border-gray-300 text-gray-700 hover:bg-gray-50 bg-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+            >
+              <Archive className="w-4 h-4" />
+              Archived Applicants
+            </Link>
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">

@@ -17,6 +17,7 @@ import { DEPARTMENTS, POSITIONS } from '@/lib/constants';
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Applicant = {
   id:                string;
+  applicantId?:      string;
   firstName:         string;
   lastName:          string;
   email?:            string;
@@ -837,11 +838,15 @@ function RejectConfirmDialog({
   onClose,
   onConfirm,
   isRejecting,
+  rejectionNote,
+  onNoteChange,
 }: {
   applicant: Applicant;
   onClose: () => void;
   onConfirm: () => void;
   isRejecting: boolean;
+  rejectionNote: string;
+  onNoteChange: (note: string) => void;
 }) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -854,12 +859,24 @@ function RejectConfirmDialog({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
-        <XCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
-        <h3 className="font-bold text-gray-900 text-lg mb-2">Reject Applicant?</h3>
-        <p className="text-sm text-gray-500 mb-6">
-          This will mark {applicant.firstName} {applicant.lastName} as rejected. This action can be undone by changing their status manually.
-        </p>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+        <div className="text-center mb-4">
+          <XCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
+          <h3 className="font-bold text-gray-900 text-lg mb-2">Reject Applicant?</h3>
+          <p className="text-sm text-gray-500">
+            This will archive {applicant.firstName} {applicant.lastName} as rejected. Their ID ({applicant.applicantId || 'A???'}) is permanently reserved.
+          </p>
+        </div>
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Rejection Notes</label>
+          <textarea
+            value={rejectionNote}
+            onChange={e => onNoteChange(e.target.value)}
+            placeholder="Optional notes about this rejection..."
+            rows={3}
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all resize-none"
+          />
+        </div>
         <div className="flex gap-3">
           <button
             onClick={onClose}
@@ -897,6 +914,7 @@ export default function ApplicantTable({ applicants }: { applicants: Applicant[]
   const [viewingApplicant, setViewingApplicant] = useState<Applicant | null>(null);
   const [convertingApplicant, setConvertingApplicant] = useState<Applicant | null>(null);
   const [rejectingApplicant, setRejectingApplicant]   = useState<Applicant | null>(null);
+  const [rejectionNote,    setRejectionNote]     = useState('');
   const [isConverting,     setIsConverting]     = useState(false);
   const [isRejecting,      setIsRejecting]      = useState(false);
   const [successToast,     setSuccessToast]     = useState<{
@@ -934,12 +952,7 @@ export default function ApplicantTable({ applicants }: { applicants: Applicant[]
     return () => document.removeEventListener('mousedown', handleClick);
   }, [menuAnchor]);
 
-  // Stable ID map — reverse so A001 = oldest
-  const idMap = new Map<string, string>(
-    [...localApplicants]
-      .reverse()
-      .map((a, i) => [a.id, `A${String(i + 1).padStart(3, '0')}`])
-  );
+  // Display ID comes from DB (applicantId), never calculated from index
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(1);
@@ -1009,10 +1022,13 @@ export default function ApplicantTable({ applicants }: { applicants: Applicant[]
   async function handleReject(applicant: Applicant) {
     setIsRejecting(true);
     try {
-      const res = await fetch(`/api/applicants/${applicant.id}`, {
-        method: 'PATCH',
+      const res = await fetch(`/api/applicants/${applicant.id}/archive`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'Rejected' }),
+        body: JSON.stringify({
+          reason: 'Rejected',
+          note: rejectionNote || undefined,
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -1023,6 +1039,7 @@ export default function ApplicantTable({ applicants }: { applicants: Applicant[]
       console.error('Reject error:', err);
     }
     setRejectingApplicant(null);
+    setRejectionNote('');
     setIsRejecting(false);
     setMenuAnchor(null);
   }
@@ -1068,9 +1085,11 @@ export default function ApplicantTable({ applicants }: { applicants: Applicant[]
       {rejectingApplicant && (
         <RejectConfirmDialog
           applicant={rejectingApplicant}
-          onClose={() => setRejectingApplicant(null)}
+          onClose={() => { setRejectingApplicant(null); setRejectionNote(''); }}
           onConfirm={() => handleReject(rejectingApplicant)}
           isRejecting={isRejecting}
+          rejectionNote={rejectionNote}
+          onNoteChange={setRejectionNote}
         />
       )}
 
@@ -1232,7 +1251,7 @@ export default function ApplicantTable({ applicants }: { applicants: Applicant[]
             <tbody className="divide-y divide-gray-100">
               {paged.length > 0 ? (
                 paged.map(app => {
-                  const stableId      = idMap.get(app.id) ?? '—';
+                  const stableId      = app.applicantId ?? '—';
                   const isUpdating    = isConverting || isRejecting;
                   const availableDocs = [
                     app.resumeUrl      && { url: app.resumeUrl,      label: 'Resume / CV' },

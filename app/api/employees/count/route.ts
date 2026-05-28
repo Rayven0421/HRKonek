@@ -11,7 +11,7 @@ export async function GET() {
   try {
     /* SQL: Count total employees for benefits dashboard */
     const countResult = await prisma.$queryRaw<[{ count: bigint }]>`
-      SELECT COUNT(*) as count FROM Employee
+      SELECT COUNT(*) as count FROM Employee WHERE isArchived = 0
     `
     const count = Number(countResult[0].count)
     return NextResponse.json({ count });

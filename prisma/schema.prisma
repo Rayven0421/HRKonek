@@ -33,6 +33,10 @@ model Employee {
   salary              Float?
   hireDate            DateTime             @default(now())
   profileImage        String?
+  isArchived          Boolean              @default(false)
+  archivedAt          DateTime?
+  archiveReason       String?
+  archiveNote         String?
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   contributionRecords ContributionRecord[]
@@ -52,27 +56,32 @@ model ContributionRecord {
 }
 
 model Applicant {
-  id                String   @id @default(uuid())
-  firstName         String
-  lastName          String
-  email             String   @unique
-  phone             String?
-  address           String?
-  position          String
-  expectedSalary    String?
-  yearsOfExperience String?
-  sssNumber         String?
-  pagibigNumber     String?
-  philhealthNumber  String?
-  tinNumber         String?
-  resumeUrl         String?
-  coverLetterUrl    String?
-  otherDocsUrl      String?
-  status                String   @default("Applied")
-  convertedEmployeeId   String?
-  appliedAt             DateTime @default(now())
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                  String   @id @default(uuid())
+  applicantId         String?  @unique
+  firstName           String
+  lastName            String
+  email               String   @unique
+  phone               String?
+  address             String?
+  position            String
+  expectedSalary      String?
+  yearsOfExperience   String?
+  sssNumber           String?
+  pagibigNumber       String?
+  philhealthNumber    String?
+  tinNumber           String?
+  resumeUrl           String?
+  coverLetterUrl      String?
+  otherDocsUrl        String?
+  status              String   @default("Applied")
+  convertedEmployeeId String?
+  isArchived          Boolean  @default(false)
+  archivedAt          DateTime?
+  archiveReason       String?
+  archiveNote         String?
+  appliedAt           DateTime @default(now())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
 
 model Notification {
@@ -95,6 +104,11 @@ model AdminUser {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   sessions     AdminSession[]
+}
+
+model SystemCounter {
+  id      String  @id
+  nextId  Int     @default(1)
 }
 
 model AdminSession {
