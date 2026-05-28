@@ -40,6 +40,7 @@ interface DashboardClientProps {
   allApplicants: ApplicantSummary[];
   activeBenefits: number;
   benefitsTrend: number | null;
+  pageError?: string | null;
 }
 
 type ToastData = {
@@ -51,7 +52,7 @@ type ToastData = {
 export default function DashboardClient({
   totalEmployees, pendingTasks,
   recentEmployees, allEmployees, allApplicants,
-  activeBenefits, benefitsTrend
+  activeBenefits, benefitsTrend, pageError
 }: DashboardClientProps) {
   const [chartView, setChartView] = useState<ChartView>("month");
   const [showGenerateReport, setShowGenerateReport] = useState(false);
@@ -456,6 +457,16 @@ export default function DashboardClient({
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Dashboard Overview</h1>
             <p className="text-gray-500 text-sm mt-1">Monitor key metrics and recent activities</p>
           </div>
+
+          {pageError && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-red-700 font-medium text-sm">Unable to load data</p>
+                <p className="text-red-600 text-xs mt-1">{pageError}</p>
+              </div>
+            </div>
+          )}
 
           {/* Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-5">

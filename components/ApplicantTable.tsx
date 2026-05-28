@@ -960,12 +960,20 @@ export default function ApplicantTable({ applicants }: { applicants: Applicant[]
   }
 
   async function handleUpdateStatus(id: string, status: string) {
-    await fetch(`/api/applicants/${id}`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ status }),
-    });
-    updateApplicantStatus(id, status);
+    try {
+      const res = await fetch(`/api/applicants/${id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || data.message || 'Failed to update status');
+      }
+      updateApplicantStatus(id, status);
+    } catch (err) {
+      console.error('Status update error:', err);
+    }
     setMenuAnchor(null);
   }
 
@@ -996,12 +1004,20 @@ export default function ApplicantTable({ applicants }: { applicants: Applicant[]
 
   async function handleReject(applicant: Applicant) {
     setIsRejecting(true);
-    await fetch(`/api/applicants/${applicant.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'Rejected' }),
-    });
-    updateApplicantStatus(applicant.id, 'Rejected');
+    try {
+      const res = await fetch(`/api/applicants/${applicant.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Rejected' }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || data.message || 'Failed to reject applicant');
+      }
+      updateApplicantStatus(applicant.id, 'Rejected');
+    } catch (err) {
+      console.error('Reject error:', err);
+    }
     setRejectingApplicant(null);
     setIsRejecting(false);
     setMenuAnchor(null);

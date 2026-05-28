@@ -18,12 +18,24 @@ interface FormData {
   status: string;
 }
 
+const MAX_SALARY = 10_000_000;
+
 const REGEX = {
   name: /^[a-zA-Z\s'-]{2,50}$/,
   email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
   phone: /^(\+63\s?|0)9\d{9}$/,
-  salary: /^\d+(\.\d{1,2})?$/,
 };
+
+const handleSafeInput = (e: React.FormEvent) => {
+  const target = e.target as HTMLInputElement
+  const cleaned = target.value
+    .replace(/\0/g, '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(/[\u200B-\u200D\uFEFF\u00AD]/g, '')
+  if (cleaned !== target.value) {
+    target.value = cleaned
+  }
+}
 
 const InputField = ({ 
   label, 
@@ -52,6 +64,7 @@ const InputField = ({
         }`}
       placeholder={placeholder}
       value={value}
+      onInput={handleSafeInput}
       onChange={(e) => onChange(e.target.value)}
     />
     {error && <span className="text-xs font-medium text-red-600">{error}</span>}
@@ -83,7 +96,11 @@ export default function NewEmployeePage() {
     if (!REGEX.name.test(formData.lastName)) errors.lastName = "Invalid last name (2-50 letters)";
     if (!REGEX.email.test(formData.email)) errors.email = "Invalid email address";
     if (formData.phone && !REGEX.phone.test(formData.phone)) errors.phone = "Invalid PH number (+639... or 09...)";
-    if (formData.salary && !REGEX.salary.test(formData.salary)) errors.salary = "Invalid salary amount";
+    if (formData.salary) {
+      const n = Number(formData.salary);
+      if (!Number.isInteger(n) || n <= 0) errors.salary = "Invalid salary amount";
+      else if (n > MAX_SALARY) errors.salary = `Maximum salary is ₱${MAX_SALARY.toLocaleString('en-PH')}.`;
+    }
     if (!formData.role) errors.role = "Position is required";
     if (!formData.department) errors.department = "Department is required";
     if (!formData.hireDate) errors.hireDate = "Hire date is required";
@@ -110,17 +127,19 @@ export default function NewEmployeePage() {
         body: JSON.stringify(formData),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({
+        message: 'Unexpected server response'
+      }));
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to create employee");
+        setError(data.message || data.error || "Failed to create employee");
+        return;
       }
 
       router.push("/employees");
       router.refresh();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "An unexpected error occurred";
-      setError(message);
+      setError("Connection error. Please check your network and try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -128,7 +147,6 @@ export default function NewEmployeePage() {
 
   const handleInputChange = (name: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear field error when user types
     if (fieldErrors[name]) {
       setFieldErrors(prev => {
         const next = { ...prev };
@@ -137,6 +155,17 @@ export default function NewEmployeePage() {
       });
     }
   };
+
+  function handleSalary(input: string) {
+    const digits = input.replace(/[^\d]/g, '');
+    const capped = digits.length > 7 ? digits.slice(0, 7) : digits;
+    handleInputChange('salary', capped);
+  }
+
+  function fmtSalaryDisplay(rawDigits: string): string {
+    if (!rawDigits) return '';
+    return Number(rawDigits).toLocaleString('en-PH');
+  }
 
   return (
     <div className="min-h-screen bg-white relative overflow-hidden">
@@ -265,18 +294,29 @@ export default function NewEmployeePage() {
                 />
               </div>
               <div className="grid grid-cols-2 gap-6">
-                <InputField 
-                  label="Annual Salary" 
-                  name="salary" 
-                  type="number" 
-                  value={formData.salary} 
-                  onChange={(val) => handleInputChange("salary", val)} 
-                  error={fieldErrors.salary}
-                />
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-gray-700">Annual Salary</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm select-none pointer-events-none">₱</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className={`w-full px-3 py-2.5 border rounded-lg text-gray-900 placeholder-gray-400 text-sm bg-white pl-7
+                        focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all ${
+                          fieldErrors.salary ? "border-red-500 bg-red-50" : "border-gray-300"
+                        }`}
+                      placeholder="25,000"
+                      value={fmtSalaryDisplay(formData.salary)}
+                      onChange={e => handleSalary(e.target.value)}
+                    />
+                  </div>
+                  {fieldErrors.salary && <span className="text-xs font-medium text-red-600">{fieldErrors.salary}</span>}
+                  {!fieldErrors.salary && <span className="text-xs text-gray-400">Numbers only — max ₱10,000,000</span>}
+                </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-[#1E3A8A]">Employment Status</label>
                   <select
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                     value={formData.status}
                     onChange={(e) => handleInputChange("status", e.target.value)}
                   >

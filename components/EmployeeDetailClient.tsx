@@ -63,9 +63,9 @@ const VALIDATIONS: Record<string, { regex: RegExp; message: string; placeholder:
     placeholder: '09123456789',
   },
   salary: {
-    regex: /^\d+(\.\d{1,2})?$/,
-    message: 'Enter a valid salary amount (e.g. 25000.00)',
-    placeholder: '25000.00',
+    regex: /^\d+$/,
+    message: 'Enter a valid salary amount (numbers only)',
+    placeholder: '25000',
   },
   firstName: {
     regex: /^[a-zA-Z\s\-'\.]{2,50}$/,
@@ -122,11 +122,24 @@ function formatPhilhealth(val: string) {
   return `${digits.slice(0, 2)}-${digits.slice(2, 11)}-${digits.slice(11)}`;
 }
 
+const MAX_SALARY = 10_000_000;
+
+function fmtSalaryDisplay(rawDigits: string): string {
+  if (!rawDigits) return '';
+  return Number(rawDigits).toLocaleString('en-PH');
+}
+
+function fmtSalary(raw: string): string {
+  const digits = raw.replace(/[^\d]/g, '');
+  return digits.length > 7 ? digits.slice(0, 7) : digits;
+}
+
 const FORMAT_MAP: Record<string, (v: string) => string> = {
   sssNumber: formatSSS,
   tinNumber: formatTIN,
   pagibigNumber: formatPagibig,
   philhealthNumber: formatPhilhealth,
+  salary: fmtSalary,
 };
 
 export default function EmployeeDetailClient({
@@ -259,6 +272,17 @@ export default function EmployeeDetailClient({
     setHasAttemptedSave(false);
   }
 
+  const handleSafeInput = (e: React.FormEvent) => {
+    const target = e.target as HTMLInputElement | HTMLTextAreaElement
+    const cleaned = target.value
+      .replace(/\0/g, '')
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+      .replace(/[\u200B-\u200D\uFEFF\u00AD]/g, '')
+    if (cleaned !== target.value) {
+      target.value = cleaned
+    }
+  }
+
   function handleFormChange(field: string, value: string) {
     const fmtFn = FORMAT_MAP[field];
     const formatted = fmtFn ? fmtFn(value) : value;
@@ -273,7 +297,8 @@ export default function EmployeeDetailClient({
   }
 
   function handleFieldBlur(field: string, value: string) {
-    const err = validateField(field, value);
+    const raw = field === 'salary' ? value.replace(/,/g, '') : value;
+    const err = validateField(field, raw);
     setErrors(prev => ({ ...prev, [field]: err }));
   }
 
@@ -313,6 +338,10 @@ export default function EmployeeDetailClient({
         if (err) newErrors[key] = err;
       }
     });
+    if (formData.salary) {
+      const n = Number(formData.salary);
+      if (n > MAX_SALARY) newErrors.salary = `Maximum salary is ₱${MAX_SALARY.toLocaleString('en-PH')}.`;
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -865,6 +894,7 @@ export default function EmployeeDetailClient({
                       name="firstName"
                       type="text"
                       value={formData.firstName || ''}
+                      onInput={handleSafeInput}
                       onChange={(e) => handleFormChange('firstName', e.target.value)}
                       onBlur={(e) => handleFieldBlur('firstName', e.target.value)}
                       className={`w-full px-3 py-2 border ${getFieldBorderClass('firstName')} rounded-lg text-gray-900 placeholder-gray-400 text-sm bg-white focus:outline-none focus:ring-2 transition-all pr-8`}
@@ -880,6 +910,7 @@ export default function EmployeeDetailClient({
                       name="lastName"
                       type="text"
                       value={formData.lastName || ''}
+                      onInput={handleSafeInput}
                       onChange={(e) => handleFormChange('lastName', e.target.value)}
                       onBlur={(e) => handleFieldBlur('lastName', e.target.value)}
                       className={`w-full px-3 py-2 border ${getFieldBorderClass('lastName')} rounded-lg text-gray-900 placeholder-gray-400 text-sm bg-white focus:outline-none focus:ring-2 transition-all pr-8`}
@@ -895,6 +926,7 @@ export default function EmployeeDetailClient({
                       name="email"
                       type="email"
                       value={formData.email || ''}
+                      onInput={handleSafeInput}
                       onChange={(e) => handleFormChange('email', e.target.value)}
                       onBlur={(e) => handleFieldBlur('email', e.target.value)}
                       className={`w-full px-3 py-2 border ${getFieldBorderClass('email')} rounded-lg text-gray-900 placeholder-gray-400 text-sm bg-white focus:outline-none focus:ring-2 transition-all pr-8`}
@@ -910,6 +942,7 @@ export default function EmployeeDetailClient({
                       name="phone"
                       type="text"
                       value={formData.phone || ''}
+                      onInput={handleSafeInput}
                       onChange={(e) => handleFormChange('phone', e.target.value)}
                       onBlur={(e) => handleFieldBlur('phone', e.target.value)}
                       className={`w-full px-3 py-2 border ${getFieldBorderClass('phone')} rounded-lg text-gray-900 placeholder-gray-400 text-sm bg-white focus:outline-none focus:ring-2 transition-all pr-8`}
@@ -925,6 +958,7 @@ export default function EmployeeDetailClient({
                     <input
                       type="text"
                       value={formData.address || ''}
+                      onInput={handleSafeInput}
                       onChange={(e) => handleFormChange('address', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/30 focus:border-[#1E3A8A] transition-all"
                       placeholder="Enter address"
@@ -969,6 +1003,7 @@ export default function EmployeeDetailClient({
                       name="role"
                       type="text"
                       value={formData.role || ''}
+                      onInput={handleSafeInput}
                       onChange={(e) => handleFormChange('role', e.target.value)}
                       onBlur={(e) => handleFieldBlur('role', e.target.value)}
                       className={`w-full px-3 py-2 border ${getFieldBorderClass('role')} rounded-lg text-gray-900 placeholder-gray-400 text-sm bg-white focus:outline-none focus:ring-2 transition-all pr-8`}
@@ -984,6 +1019,7 @@ export default function EmployeeDetailClient({
                       name="department"
                       type="text"
                       value={formData.department || ''}
+                      onInput={handleSafeInput}
                       onChange={(e) => handleFormChange('department', e.target.value)}
                       onBlur={(e) => handleFieldBlur('department', e.target.value)}
                       className={`w-full px-3 py-2 border ${getFieldBorderClass('department')} rounded-lg text-gray-900 placeholder-gray-400 text-sm bg-white focus:outline-none focus:ring-2 transition-all pr-8`}
@@ -995,14 +1031,16 @@ export default function EmployeeDetailClient({
 
                 <FormField label="Annual Salary" error={errors.salary}>
                   <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm select-none pointer-events-none">₱</span>
                     <input
                       name="salary"
                       type="text"
-                      value={formData.salary || ''}
+                      inputMode="numeric"
+                      value={fmtSalaryDisplay(formData.salary)}
                       onChange={(e) => handleFormChange('salary', e.target.value)}
                       onBlur={(e) => handleFieldBlur('salary', e.target.value)}
-                      className={`w-full px-3 py-2 border ${getFieldBorderClass('salary')} rounded-lg text-gray-900 placeholder-gray-400 text-sm bg-white focus:outline-none focus:ring-2 transition-all pr-8`}
-                      placeholder="25000.00"
+                      className={`w-full px-3 py-2 border ${getFieldBorderClass('salary')} rounded-lg text-gray-900 placeholder-gray-400 text-sm bg-white focus:outline-none focus:ring-2 transition-all pl-7 pr-8`}
+                      placeholder="25,000"
                     />
                     {renderInputIcon('salary')}
                   </div>

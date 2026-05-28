@@ -1,16 +1,12 @@
 export const dynamic = 'force-dynamic';
 
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@/app/generated/prisma/client'
 import Sidebar from '@/components/Sidebar';
 import ApplicantTable from '@/components/ApplicantTable';
-import { Bell, UserCircle, FileText } from 'lucide-react';
+import { Bell, UserCircle, FileText, AlertCircle } from 'lucide-react';
 
 export default async function ApplicantsPage() {
-  // ── Fetch oldest-first so index 0 = A001 (stable, chronological IDs) ──────
-  /* SQL: Get all applicants ordered by application date
-     ascending for stable ID assignment (A001 = oldest) */
-  const rawApplicants = await prisma.$queryRaw<Array<{
+  let rawApplicants: Array<{
     id: string; firstName: string; lastName: string;
     email: string | null; phone: string | null;
     address: string | null; position: string;
@@ -22,18 +18,31 @@ export default async function ApplicantsPage() {
     otherDocsUrl: string | null; status: string;
     appliedAt: Date; createdAt: Date;
     convertedEmployeeId: string | null;
-  }>>`
-    SELECT id, firstName, lastName, email, phone,
-           address, position, expectedSalary,
-           yearsOfExperience, sssNumber, pagibigNumber,
-           philhealthNumber, tinNumber, resumeUrl,
-           coverLetterUrl, otherDocsUrl, status,
-           appliedAt, createdAt, convertedEmployeeId
-    FROM Applicant
-    ORDER BY appliedAt ASC
-  `
+  }> = []
 
-  // Assign stable IDs based on insertion/application order, not display order
+  let pageError: string | null = null
+
+  try {
+    rawApplicants = await prisma.$queryRaw`
+      SELECT id, firstName, lastName, email, phone,
+             address, position, expectedSalary,
+             yearsOfExperience, sssNumber, pagibigNumber,
+             philhealthNumber, tinNumber, resumeUrl,
+             coverLetterUrl, otherDocsUrl, status,
+             appliedAt, createdAt, convertedEmployeeId
+      FROM Applicant
+      ORDER BY appliedAt ASC
+    `
+  } catch (error) {
+    console.error('Applicants page query error:', error)
+    const msg = error instanceof Error ? error.message : ''
+    if (msg.includes('invalid characters') || msg.includes('Conversion failed')) {
+      pageError = 'Some applicant records contain invalid data. Please contact your administrator.'
+    } else {
+      pageError = 'Unable to load applicants at this time. Please refresh the page.'
+    }
+  }
+
   const applicants = rawApplicants.map((a, index) => ({
     ...a,
     email:             a.email             ?? '',
@@ -49,10 +58,9 @@ export default async function ApplicantsPage() {
     coverLetterUrl:    a.coverLetterUrl    ?? undefined,
     otherDocsUrl:      a.otherDocsUrl      ?? undefined,
     convertedEmployeeId: a.convertedEmployeeId ?? undefined,
-    applicantId: `A${String(index + 1).padStart(3, '0')}`,  // A001 = oldest
+    applicantId: `A${String(index + 1).padStart(3, '0')}`,
   }));
 
-  // Pass newest-first as the default — the client table handles re-sorting
   const defaultSorted = [...applicants].reverse();
 
   const pendingCount   = applicants.filter(a => a.status === 'Applied' || a.status === 'Under Review').length;
@@ -64,7 +72,6 @@ export default async function ApplicantsPage() {
       <Sidebar />
 
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-
         <header className="flex-shrink-0 h-16 bg-[#1E3A8A] flex items-center justify-between px-4 sm:px-8 shadow-md z-10">
           <div className="w-8 lg:hidden" />
           <div className="hidden lg:block text-white font-semibold text-base tracking-wide opacity-80 select-none">
@@ -93,7 +100,16 @@ export default async function ApplicantsPage() {
             <p className="text-gray-500 text-sm mt-0.5">Review and manage job applicants</p>
           </div>
 
-          {/* Stat pills */}
+          {pageError && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-red-700 font-medium text-sm">Unable to load data</p>
+                <p className="text-red-600 text-xs mt-1">{pageError}</p>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-3 mb-6">
             <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-4 py-2 shadow-sm">
               <FileText className="w-4 h-4 text-blue-600" />

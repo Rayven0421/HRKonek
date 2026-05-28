@@ -142,11 +142,14 @@ function validateTIN(val: string): string | null {
   return null;
 }
 
+const MAX_SALARY = 10_000_000;
+
 /** Salary: required, must be a positive integer */
 function validateSalary(rawDigits: string): string | null {
   if (!rawDigits) return 'Expected salary is required.';
   const n = Number(rawDigits);
   if (!Number.isInteger(n) || n <= 0) return 'Enter a valid salary amount (numbers only).';
+  if (n > MAX_SALARY) return `Maximum salary is ₱${MAX_SALARY.toLocaleString('en-PH')}.`;
   return null;
 }
 
@@ -162,6 +165,18 @@ export default function ApplyPage() {
   const [errors, setErrors]       = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading]     = useState(false);
+
+  // ── Safe input filter ────────────────────────────────────────────────────
+  function handleSafeInput(e: React.FormEvent) {
+    const target = e.target as HTMLInputElement | HTMLTextAreaElement
+    const cleaned = target.value
+      .replace(/\0/g, '')
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+      .replace(/[\u200B-\u200D\uFEFF\u00AD]/g, '')
+    if (cleaned !== target.value) {
+      target.value = cleaned
+    }
+  }
 
   // ── Generic field setter ───────────────────────────────────────────────────
   function setField<K extends keyof FormDataRecord>(key: K, value: FormDataRecord[K]) {
@@ -185,9 +200,9 @@ export default function ApplyPage() {
 
   // ── Salary handler (digits only, stores raw digits) ────────────────────────
   function handleSalary(input: string) {
-    // Extract only digit characters from whatever the user pastes or types
     const digits = input.replace(/[^\d]/g, '');
-    setField('expectedSalary', digits);
+    const capped = digits.length > 7 ? digits.slice(0, 7) : digits;
+    setField('expectedSalary', capped);
   }
 
   // ── File handler ───────────────────────────────────────────────────────────
@@ -286,10 +301,14 @@ export default function ApplyPage() {
 
     try {
       const res = await fetch('/api/apply', { method: 'POST', body: data });
-      if (res.ok) setSubmitted(true);
-      else throw new Error('Server error');
+      if (res.ok) {
+        setSubmitted(true);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setErrors(prev => ({ ...prev, resume: errData.error || errData.message || 'Submission failed. Please try again.' }));
+      }
     } catch {
-      setErrors(prev => ({ ...prev, resume: 'Submission failed. Please try again.' }));
+      setErrors(prev => ({ ...prev, resume: 'Connection error. Please check your network and try again.' }));
     } finally {
       setLoading(false);
     }
@@ -355,6 +374,7 @@ export default function ApplyPage() {
                 className={inputClass('firstName')}
                 placeholder="Juan"
                 value={formData.firstName}
+                onInput={handleSafeInput}
                 onChange={e => setField('firstName', e.target.value)}
               />
               <FieldError field="firstName" />
@@ -369,6 +389,7 @@ export default function ApplyPage() {
                 className={inputClass('lastName')}
                 placeholder="dela Cruz"
                 value={formData.lastName}
+                onInput={handleSafeInput}
                 onChange={e => setField('lastName', e.target.value)}
               />
               <FieldError field="lastName" />
@@ -384,6 +405,7 @@ export default function ApplyPage() {
                 className={inputClass('email')}
                 placeholder="juan@email.com"
                 value={formData.email}
+                onInput={handleSafeInput}
                 onChange={e => setField('email', e.target.value)}
               />
               <FieldError field="email" />
@@ -399,6 +421,7 @@ export default function ApplyPage() {
                 className={inputClass('phone')}
                 placeholder="09171234567"
                 value={formData.phone}
+                onInput={handleSafeInput}
                 onChange={e => setField('phone', e.target.value)}
               />
               <FieldError field="phone" />
@@ -418,6 +441,7 @@ export default function ApplyPage() {
               rows={4}
               placeholder="House No., Street, Barangay, City, Province"
               value={formData.address}
+              onInput={handleSafeInput}
               onChange={e => setField('address', e.target.value)}
             />
             <FieldError field="address" />
@@ -438,6 +462,7 @@ export default function ApplyPage() {
                 className={inputClass('position')}
                 placeholder="e.g. HR Officer"
                 value={formData.position}
+                onInput={handleSafeInput}
                 onChange={e => setField('position', e.target.value)}
               />
               <FieldError field="position" />
@@ -465,7 +490,7 @@ export default function ApplyPage() {
               </div>
               <FieldError field="expectedSalary" />
               {!errors.expectedSalary && (
-                <p className="text-xs text-gray-400 mt-1">Numbers only — e.g. 25000</p>
+                <p className="text-xs text-gray-400 mt-1">Numbers only — e.g. 25,000 (max ₱10,000,000)</p>
               )}
             </div>
           </div>
@@ -480,6 +505,7 @@ export default function ApplyPage() {
               rows={3}
               placeholder="Briefly describe your work history and total years of relevant experience…"
               value={formData.yearsOfExperience}
+              onInput={handleSafeInput}
               onChange={e => setField('yearsOfExperience', e.target.value)}
             />
             <FieldError field="yearsOfExperience" />

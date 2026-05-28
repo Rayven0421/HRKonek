@@ -1,15 +1,59 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@/app/generated/prisma/client'
+import { sanitizeRequired, sanitizeString, sanitizeNumber, sanitizeDate, sanitizeEmail, getFriendlyError } from '@/lib/sanitize'
 
-export async function POST(request: NextRequest) {
-  const { applicantId, employeeData } = await request.json();
-
+export async function POST(request: Request) {
   try {
+    let body: Record<string, unknown>
+    try {
+      body = await request.json()
+    } catch {
+      return Response.json({ success: false, error: 'Invalid request body' }, { status: 400 })
+    }
+
+    const applicantId = body.applicantId as string
+    if (!applicantId) {
+      return Response.json({ success: false, error: 'Applicant ID is required' }, { status: 400 })
+    }
+
+    const employeeData = body.employeeData as Record<string, unknown> | undefined
+    if (!employeeData) {
+      return Response.json({ success: false, error: 'Employee data is required' }, { status: 400 })
+    }
+
+    let firstName: string
+    let lastName: string
+    let email: string
+
+    try {
+      firstName = sanitizeRequired(employeeData.firstName, 'First Name')
+      lastName = sanitizeRequired(employeeData.lastName, 'Last Name')
+    } catch (err) {
+      return Response.json({
+        success: false,
+        error: err instanceof Error ? err.message : 'Name fields are required'
+      }, { status: 400 })
+    }
+
+    const rawEmail = sanitizeEmail(employeeData.email)
+    if (!rawEmail) {
+      return Response.json({ success: false, error: 'A valid email is required' }, { status: 400 })
+    }
+    email = rawEmail
+
+    const phone = sanitizeString(employeeData.phone)
+    const position = sanitizeRequired(employeeData.position, 'Position')
+    const department = sanitizeRequired(employeeData.department, 'Department')
+    const employmentType = sanitizeString(employeeData.employmentType) ?? 'Regular'
+    const startDate = sanitizeDate(employeeData.startDate) ?? new Date().toISOString()
+    const salary = sanitizeNumber(employeeData.salary)
+    const sssNumber = sanitizeString(employeeData.sssNumber)
+    const philhealthNumber = sanitizeString(employeeData.philhealthNumber)
+    const pagibigNumber = sanitizeString(employeeData.pagibigNumber)
+    const tinNumber = sanitizeString(employeeData.tinNumber)
+
     const newEmployeeId = crypto.randomUUID()
     const displayId = `E${Date.now().toString().slice(-4)}`
 
-    /* SQL: Insert converted applicant as new employee */
     await prisma.$executeRaw`
       INSERT INTO Employee (
         id, firstName, lastName, email, phone,
@@ -18,45 +62,32 @@ export async function POST(request: NextRequest) {
         tinNumber, employmentType, employeeId,
         createdAt, updatedAt
       ) VALUES (
-        ${newEmployeeId},
-        ${employeeData.firstName},
-        ${employeeData.lastName},
-        ${employeeData.email},
-        ${employeeData.phone || null},
-        ${employeeData.position},
-        ${employeeData.department},
-        'Active',
-        ${new Date(employeeData.startDate).toISOString()},
-        ${employeeData.salary ? parseFloat(employeeData.salary) : null},
-        ${employeeData.sssNumber || null},
-        ${employeeData.philhealthNumber || null},
-        ${employeeData.pagibigNumber || null},
-        ${employeeData.tinNumber || null},
-        ${employeeData.employmentType || 'Regular'},
-        ${displayId},
-        ${new Date().toISOString()},
-        ${new Date().toISOString()}
+        ${newEmployeeId}, ${firstName}, ${lastName}, ${email},
+        ${phone || null}, ${position}, ${department},
+        'Active', ${startDate}, ${salary},
+        ${sssNumber || null}, ${philhealthNumber || null},
+        ${pagibigNumber || null}, ${tinNumber || null},
+        ${employmentType}, ${displayId},
+        ${new Date().toISOString()}, ${new Date().toISOString()}
       )
     `
 
-    /* SQL: Mark original applicant as Hired and link to created Employee record */
     await prisma.$executeRaw`
       UPDATE Applicant
-      SET status              = 'Hired',
+      SET status = 'Hired',
           convertedEmployeeId = ${newEmployeeId},
-          updatedAt           = ${new Date().toISOString()}
+          updatedAt = ${new Date().toISOString()}
       WHERE id = ${applicantId}
     `
 
-    return NextResponse.json({
+    return Response.json({
       success: true,
       employeeId: newEmployeeId,
-      employeeName: `${employeeData.firstName} ${employeeData.lastName}`,
-    });
-  } catch (_error) {
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to convert applicant',
-    }, { status: 500 });
+      employeeName: `${firstName} ${lastName}`,
+    })
+  } catch (error) {
+    console.error('Convert applicant error:', error)
+    const { message } = getFriendlyError(error)
+    return Response.json({ success: false, error: message }, { status: 500 })
   }
 }

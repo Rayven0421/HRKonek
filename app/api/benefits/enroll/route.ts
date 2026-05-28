@@ -1,98 +1,83 @@
 import { prisma } from "@/lib/prisma";
-import { Prisma } from '@/app/generated/prisma/client'
-import { NextResponse } from "next/server";
+import { sanitizeString, sanitizeDate, getFriendlyError } from '@/lib/sanitize'
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { benefits, scope, effectiveDate } = body;
-
-    if (!effectiveDate) {
-      return NextResponse.json(
-        { message: "Effective date is required" },
-        { status: 400 }
-      );
+    let body: Record<string, unknown>
+    try {
+      body = await request.json()
+    } catch {
+      return Response.json({ message: 'Invalid request body' }, { status: 400 })
     }
 
-    /* SQL: Get all employee benefit enrollment status */
+    const effectiveDate = sanitizeDate(body.effectiveDate)
+    if (!effectiveDate) {
+      return Response.json({ message: 'Effective date is required' }, { status: 400 })
+    }
+
+    const benefits = body.benefits as Record<string, boolean> | undefined
+    if (!benefits || (!benefits.sss && !benefits.philhealth && !benefits.pagibig)) {
+      return Response.json({ message: 'Select at least one benefit' }, { status: 400 })
+    }
+
     const employees = await prisma.$queryRaw<Array<{
-      id: string;
-      sssNumber: string | null;
-      philhealthNumber: string | null;
-      pagibigNumber: string | null;
+      id: string; sssNumber: string | null;
+      philhealthNumber: string | null; pagibigNumber: string | null;
     }>>`
       SELECT id, sssNumber, philhealthNumber, pagibigNumber
       FROM Employee
     `
 
-    let targets = employees;
-    if (scope === "new") {
+    const scope = sanitizeString(body.scope)
+    let targets = employees
+    if (scope === 'new') {
       targets = employees.filter(
         (e) =>
-          (benefits?.sss && !e.sssNumber) ||
-          (benefits?.philhealth && !e.philhealthNumber) ||
-          (benefits?.pagibig && !e.pagibigNumber)
-      );
+          (benefits.sss && !e.sssNumber) ||
+          (benefits.philhealth && !e.philhealthNumber) ||
+          (benefits.pagibig && !e.pagibigNumber)
+      )
     }
 
     if (targets.length === 0) {
-      return NextResponse.json(
-        { message: "No employees need enrollment", enrolled: 0 },
-        { status: 200 }
-      );
+      return Response.json({ message: 'No employees need enrollment', enrolled: 0 }, { status: 200 })
     }
 
-    let enrolled = 0;
+    let enrolled = 0
     for (const emp of targets) {
-      const updateData: Record<string, string> = {};
-
-      if (benefits?.sss && !emp.sssNumber)
-        updateData.sssNumber = `SSS-PENDING-${emp.id.slice(0, 6).toUpperCase()}`;
-      if (benefits?.philhealth && !emp.philhealthNumber)
-        updateData.philhealthNumber = `PH-PENDING-${emp.id.slice(0, 6).toUpperCase()}`;
-      if (benefits?.pagibig && !emp.pagibigNumber)
-        updateData.pagibigNumber = `PI-PENDING-${emp.id.slice(0, 6).toUpperCase()}`;
-
-      if (Object.keys(updateData).length > 0) {
-        /* SQL: Update government benefit IDs for employee */
-        if (benefits?.sss && !emp.sssNumber) {
-          await prisma.$executeRaw`
-            UPDATE Employee
-            SET sssNumber = ${`SSS-PENDING-${emp.id.slice(0,6).toUpperCase()}`},
-                updatedAt = ${new Date().toISOString()}
-            WHERE id = ${emp.id}
-          `
-        }
-        if (benefits?.philhealth && !emp.philhealthNumber) {
-          await prisma.$executeRaw`
-            UPDATE Employee
-            SET philhealthNumber = ${`PH-PENDING-${emp.id.slice(0,6).toUpperCase()}`},
-                updatedAt = ${new Date().toISOString()}
-            WHERE id = ${emp.id}
-          `
-        }
-        if (benefits?.pagibig && !emp.pagibigNumber) {
-          await prisma.$executeRaw`
-            UPDATE Employee
-            SET pagibigNumber = ${`PI-PENDING-${emp.id.slice(0,6).toUpperCase()}`},
-                updatedAt = ${new Date().toISOString()}
-            WHERE id = ${emp.id}
-          `
-        }
-        enrolled++;
+      if (benefits.sss && !emp.sssNumber) {
+        const sssVal = `SSS-PENDING-${emp.id.slice(0, 6).toUpperCase()}`
+        await prisma.$executeRaw`
+          UPDATE Employee
+          SET sssNumber = ${sssVal}, updatedAt = ${new Date().toISOString()}
+          WHERE id = ${emp.id}
+        `
+        enrolled++
+      }
+      if (benefits.philhealth && !emp.philhealthNumber) {
+        const phVal = `PH-PENDING-${emp.id.slice(0, 6).toUpperCase()}`
+        await prisma.$executeRaw`
+          UPDATE Employee
+          SET philhealthNumber = ${phVal}, updatedAt = ${new Date().toISOString()}
+          WHERE id = ${emp.id}
+        `
+        enrolled++
+      }
+      if (benefits.pagibig && !emp.pagibigNumber) {
+        const piVal = `PI-PENDING-${emp.id.slice(0, 6).toUpperCase()}`
+        await prisma.$executeRaw`
+          UPDATE Employee
+          SET pagibigNumber = ${piVal}, updatedAt = ${new Date().toISOString()}
+          WHERE id = ${emp.id}
+        `
+        enrolled++
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      enrolled,
-      message: `${enrolled} employees enrolled`,
-    });
-  } catch (err) {
-    console.error("Bulk enrollment error:", err);
-    return NextResponse.json(
-      { message: "Internal server error" },
-      { status: 500 }
-    );
+    return Response.json({ success: true, enrolled, message: `${enrolled} employees enrolled` })
+  } catch (error) {
+    console.error('Bulk enrollment error:', error)
+    const { message } = getFriendlyError(error)
+    return Response.json({ message }, { status: 500 })
   }
 }

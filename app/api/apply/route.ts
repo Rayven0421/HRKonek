@@ -1,42 +1,68 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@/app/generated/prisma/client'
+import { sanitizeRequired, sanitizeString, sanitizeEmail, getFriendlyError } from '@/lib/sanitize'
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const formData = await request.formData();
-    
+    let formData: FormData
+    try {
+      formData = await request.formData()
+    } catch {
+      return Response.json({ error: 'Invalid form data' }, { status: 400 })
+    }
+
     const saveFile = async (file: File | null) => {
       if (!file || file.size === 0) return null;
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
-      const filename = `${Date.now()}-${file.name.replace(/\s/g, '_')}`;
+      const safeName = file.name.replace(/[^\w.\-() ]/g, '_');
+      const filename = `${Date.now()}-${safeName}`;
       const uploadDir = path.join(process.cwd(), 'public/uploads');
       await mkdir(uploadDir, { recursive: true });
       await writeFile(path.join(uploadDir, filename), buffer);
       return `/uploads/${filename}`;
     };
 
-    const email = formData.get('email') as string
+    const firstName = sanitizeString(formData.get('firstName') as string)
+    if (!firstName) {
+      return Response.json({ error: 'First name is required' }, { status: 400 })
+    }
 
-    /* SQL: Check if applicant email already submitted */
+    const lastName = sanitizeString(formData.get('lastName') as string)
+    if (!lastName) {
+      return Response.json({ error: 'Last name is required' }, { status: 400 })
+    }
+
+    const email = sanitizeEmail(formData.get('email') as string)
+    if (!email) {
+      return Response.json({ error: 'A valid email address is required' }, { status: 400 })
+    }
+
+    const phone = sanitizeString(formData.get('phone') as string)
+    const address = sanitizeString(formData.get('address') as string)
+    
+    const position = sanitizeString(formData.get('position') as string)
+    if (!position) {
+      return Response.json({ error: 'Position is required' }, { status: 400 })
+    }
+
+    const expectedSalary = sanitizeString(formData.get('expectedSalary') as string)
+    const yearsOfExperience = sanitizeString(formData.get('yearsOfExperience') as string)
+    const sssNumber = sanitizeString(formData.get('sssNumber') as string)
+    const pagibigNumber = sanitizeString(formData.get('pagibigNumber') as string)
+    const philhealthNumber = sanitizeString(formData.get('philhealthNumber') as string)
+    const tinNumber = sanitizeString(formData.get('tinNumber') as string)
+
     const existingRows = await prisma.$queryRaw<Array<{ id: string }>>`
-      SELECT id FROM Applicant
-      WHERE email = ${email}
-      LIMIT 1
+      SELECT id FROM Applicant WHERE email = ${email} LIMIT 1
     `
-
     if (existingRows.length > 0) {
-      return NextResponse.json({
-        message: 'An application with this email already exists.'
-      }, { status: 409 })
+      return Response.json({ message: 'An application with this email already exists.' }, { status: 409 })
     }
 
     const newApplicantId = crypto.randomUUID()
 
-    /* SQL: Insert new job application record */
     await prisma.$executeRaw`
       INSERT INTO Applicant (
         id, firstName, lastName, email, phone, address,
@@ -45,19 +71,11 @@ export async function POST(request: NextRequest) {
         tinNumber, resumeUrl, coverLetterUrl, otherDocsUrl,
         status, appliedAt, createdAt, updatedAt
       ) VALUES (
-        ${newApplicantId},
-        ${formData.get('firstName') as string},
-        ${formData.get('lastName') as string},
-        ${email},
-        ${formData.get('phone') as string || null},
-        ${formData.get('address') as string || null},
-        ${formData.get('position') as string},
-        ${(formData.get('expectedSalary') as string) || null},
-        ${(formData.get('yearsOfExperience') as string) || null},
-        ${(formData.get('sssNumber') as string) || null},
-        ${(formData.get('pagibigNumber') as string) || null},
-        ${(formData.get('philhealthNumber') as string) || null},
-        ${(formData.get('tinNumber') as string) || null},
+        ${newApplicantId}, ${firstName}, ${lastName}, ${email},
+        ${phone ?? null}, ${address ?? null}, ${position},
+        ${expectedSalary ?? null}, ${yearsOfExperience ?? null},
+        ${sssNumber ?? null}, ${pagibigNumber ?? null},
+        ${philhealthNumber ?? null}, ${tinNumber ?? null},
         ${await saveFile(formData.get('resume') as File) || null},
         ${await saveFile(formData.get('coverLetter') as File) || null},
         ${await saveFile(formData.get('other') as File) || null},
@@ -68,29 +86,10 @@ export async function POST(request: NextRequest) {
       )
     `
 
-    /* SQL: Return the created applicant record */
-    const newApplicantRows = await prisma.$queryRaw<Array<{
-      id: string; firstName: string; lastName: string;
-      email: string | null; phone: string | null;
-      address: string | null; position: string;
-      expectedSalary: string | null;
-      yearsOfExperience: string | null;
-      sssNumber: string | null; pagibigNumber: string | null;
-      philhealthNumber: string | null; tinNumber: string | null;
-      resumeUrl: string | null; coverLetterUrl: string | null;
-      otherDocsUrl: string | null; status: string;
-      convertedEmployeeId: string | null;
-      appliedAt: Date; createdAt: Date; updatedAt: Date;
-    }>>`
-      SELECT * FROM Applicant
-      WHERE id = ${newApplicantId}
-      LIMIT 1
-    `
-    const applicant = newApplicantRows[0]
-
-    return NextResponse.json(applicant);
+    return Response.json({ success: true, message: 'Application submitted successfully' })
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: 'Failed to create application' }, { status: 500 });
+    console.error('Apply error:', error)
+    const { message } = getFriendlyError(error)
+    return Response.json({ error: message }, { status: 500 })
   }
 }

@@ -1,52 +1,49 @@
 import { prisma } from "@/lib/prisma";
-import { Prisma } from '@/app/generated/prisma/client'
-import { NextResponse } from "next/server";
+import { sanitizeMonth, sanitizeYear, getFriendlyError } from '@/lib/sanitize'
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { month, year, benefits, totals } = body;
-
-    if (!month || !year) {
-      return NextResponse.json(
-        { message: "Month and year are required" },
-        { status: 400 }
-      );
+    let body: Record<string, unknown>
+    try {
+      body = await request.json()
+    } catch {
+      return Response.json({ message: 'Invalid request body' }, { status: 400 })
     }
+
+    const month = sanitizeMonth(body.month)
+    if (!month) {
+      return Response.json({ message: 'A valid month is required (e.g. January, February)' }, { status: 400 })
+    }
+
+    const year = sanitizeYear(body.year)
+    if (!year) {
+      return Response.json({ message: 'A valid 4-digit year is required' }, { status: 400 })
+    }
+
+    const benefits = body.benefits as Record<string, boolean> | undefined
     if (!benefits?.sss && !benefits?.philhealth && !benefits?.pagibig) {
-      return NextResponse.json(
-        { message: "Select at least one benefit" },
-        { status: 400 }
-      );
+      return Response.json({ message: 'Select at least one benefit' }, { status: 400 })
     }
 
-    /* SQL: Get all active employees with gov benefit IDs */
     const activeEmployees = await prisma.$queryRaw<Array<{
-      id: string;
-      sssNumber: string | null;
-      philhealthNumber: string | null;
-      pagibigNumber: string | null;
+      id: string; sssNumber: string | null;
+      philhealthNumber: string | null; pagibigNumber: string | null;
     }>>`
       SELECT id, sssNumber, philhealthNumber, pagibigNumber
-      FROM Employee
-      WHERE status = 'Active'
+      FROM Employee WHERE status = 'Active'
     `
 
-    /* SQL: Check for duplicate — same month/year already processed */
     const duplicateCheck = await prisma.$queryRaw<[{ count: bigint }]>`
       SELECT COUNT(*) as count
       FROM ContributionRecord
-      WHERE month = ${month}
-      AND   year  = ${year}
+      WHERE month = ${month} AND year = ${year}
     `
-
     if (Number(duplicateCheck[0].count) > 0) {
-      return NextResponse.json({
+      return Response.json({
         message: `Contributions for ${month} ${year} have already been processed.`
       }, { status: 409 })
     }
 
-    /* SQL: Bulk insert contribution records for all active enrolled employees */
     let recordsCreated = 0
     for (const emp of activeEmployees) {
       if (benefits.sss && emp.sssNumber) {
@@ -72,21 +69,14 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({
+    return Response.json({
       success: true,
       message: `Contributions processed for ${month} ${year}`,
-      processed: {
-        sss: benefits.sss ? totals?.sss : null,
-        philhealth: benefits.philhealth ? totals?.philhealth : null,
-        pagibig: benefits.pagibig ? totals?.pagibig : null,
-      },
       recordsCreated,
-    });
-  } catch (err) {
-    console.error("Process contributions error:", err);
-    return NextResponse.json(
-      { message: "Internal server error" },
-      { status: 500 }
-    );
+    })
+  } catch (error) {
+    console.error('Process contributions error:', error)
+    const { message } = getFriendlyError(error)
+    return Response.json({ message }, { status: 500 })
   }
 }
