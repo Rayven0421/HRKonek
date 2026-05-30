@@ -71,8 +71,10 @@ const InputField = ({
       value={value}
       onInput={handleSafeInput}
       onChange={(e) => {
-        const year = e.target.value.split('-')[0];
-        if (year && year.length > 4) return;
+        if (type === "date") {
+          const year = e.target.value.split('-')[0];
+          if (year && year.length > 4) return;
+        }
         onChange(e.target.value);
       }}
     />
