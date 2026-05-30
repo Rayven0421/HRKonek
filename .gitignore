@@ -48,3 +48,35 @@ next-env.d.ts
 
 # database
 /dev.db
+
+# ========== C# HRKonek App Launcher ==========
+
+# Build output
+/HRKonek App/HRKonek/HRKonek/bin/
+/HRKonek App/HRKonek/HRKonek/obj/
+
+# Visual Studio user files
+/HRKonek App/HRKonek/.vs/
+*.csproj.user
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# WebView runtime cache (large, regenerated on launch)
+/HRKonek App/WebViewData/
+
+# .NET / C# project artifacts (general)
+*.nupkg
+*.snk
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/

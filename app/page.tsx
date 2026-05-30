@@ -63,7 +63,7 @@ export default function Home() {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-white flex items-center justify-center overflow-hidden font-sans">
+    <div className="relative min-h-screen min-h-dvh w-full bg-white flex items-center justify-center overflow-hidden font-sans">
 
       {/* ── Full‑screen loading overlay (only after validation passes) ── */}
       {isNavigating && (
@@ -86,7 +86,7 @@ export default function Home() {
 
       {/* Dark blue blob — top left, viewport-relative, fully responsive */}
       <svg
-        className="pointer-events-none absolute top-0 left-0 w-[55vw] max-w-[600px] h-auto"
+        className="pointer-events-none absolute top-0 left-0 w-[35vw] sm:w-[45vw] lg:w-[55vw] max-w-[600px] h-auto"
         viewBox="0 0 600 520"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
@@ -101,7 +101,7 @@ export default function Home() {
 
       {/* Light blue wave — bottom right, viewport-relative */}
       <svg
-        className="pointer-events-none absolute bottom-0 right-0 w-[65vw] max-w-[800px] h-auto"
+        className="pointer-events-none absolute bottom-0 right-0 w-[45vw] sm:w-[55vw] lg:w-[65vw] max-w-[800px] h-auto"
         viewBox="0 0 800 500"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
@@ -121,7 +121,7 @@ export default function Home() {
       </svg>
 
       {/* Card — centers on all screen sizes */}
-      <div className="relative z-10 w-full max-w-[440px] mx-4 sm:mx-auto bg-white rounded-2xl shadow-xl border border-gray-100 px-6 py-8 sm:px-10 sm:py-10 flex flex-col items-center">
+      <div className="relative z-10 w-full max-w-[92%] sm:max-w-[400px] md:max-w-[440px] bg-white rounded-2xl shadow-xl border border-gray-100 px-4 sm:px-8 md:px-10 py-6 sm:py-8 md:py-10 flex flex-col items-center">
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-6">
