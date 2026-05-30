@@ -33,6 +33,8 @@ namespace HRKonek
         private const int
             DWMWCP_DONOTROUND = 1;
 
+        private const int
+            WM_GETMINMAXINFO = 0x0024;
         private const int WM_NCHITTEST = 0x84;
         private const int WM_NCLBUTTONDOWN = 0xA1;
         private const int WM_SIZE = 0x0005;
@@ -136,7 +138,7 @@ namespace HRKonek
             HTBOTTOMLEFT = 16,
             HTBOTTOMRIGHT = 17;
 
-        private const int RESIZE_BORDER = 6;
+        private const int RESIZE_BORDER = 8;
 
         protected override void WndProc(
             ref Message m)
@@ -171,8 +173,8 @@ namespace HRKonek
                 if (x >= w - g)
                     { m.Result = (IntPtr)HTRIGHT; return; }
 
-                // Titlebar drag — top 40px, buttons on right 160px excluded
-                if (y >= 0 && y < 40 && x < w - 160)
+                // Titlebar drag — top 56px, buttons on right 160px excluded
+                if (y >= 0 && y < 56 && x < w - 160)
                     { m.Result = (IntPtr)HTCAPTION; return; }
 
                 // Let default handle everything else
@@ -184,6 +186,10 @@ namespace HRKonek
 
             switch (m.Msg)
             {
+                case WM_GETMINMAXINFO:
+                    OnGetMinMaxInfo(ref m);
+                    break;
+
                 case WM_EXITSIZEMOVE:
                     BeginInvoke(new Action(
                         ForceWebViewResize));
@@ -215,6 +221,36 @@ namespace HRKonek
                     }
                     break;
             }
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MINMAXINFO
+        {
+            public Point ptReserved;
+            public Point ptMaxSize;
+            public Point ptMaxPosition;
+            public Point ptMinTrackSize;
+            public Point ptMaxTrackSize;
+        }
+
+        private void OnGetMinMaxInfo(
+            ref Message m)
+        {
+            var mmi = (MINMAXINFO)
+                Marshal.PtrToStructure(
+                    m.LParam,
+                    typeof(MINMAXINFO))!;
+            var wa = Screen.GetWorkingArea(this);
+
+            mmi.ptMaxPosition = new Point(
+                wa.X, wa.Y);
+            mmi.ptMaxSize = new Point(
+                wa.Width, wa.Height);
+            mmi.ptMaxTrackSize = new Point(
+                wa.Width, wa.Height);
+
+            Marshal.StructureToPtr(
+                mmi, m.LParam, false);
         }
 
         protected override void OnResize(

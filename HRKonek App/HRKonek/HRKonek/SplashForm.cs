@@ -46,11 +46,45 @@ namespace HRKonek
                     sizeof(int));
             }
             catch { }
+        }
 
+        protected override async void OnLoad(
+            EventArgs e)
+        {
+            base.OnLoad(e);
+
+            // Scale down on smaller screens (laptops)
+            var screen = Screen.GetWorkingArea(this);
+            float scaleX = Math.Min(1f,
+                screen.Width / 1366f);
+            float scaleY = Math.Min(1f,
+                screen.Height / 768f);
+            float scale = Math.Max(0.65f,
+                Math.Min(scaleX, scaleY));
+
+            int w = Math.Max(300,
+                (int)(480 * scale));
+            int h = Math.Max(200,
+                (int)(300 * scale));
+            ClientSize = new Size(w, h);
+
+            // Center on screen
+            Location = new Point(
+                (screen.Width - w) / 2 + screen.Left,
+                (screen.Height - h) / 2 + screen.Top);
+
+            ApplyRegion();
+
+            await InitSplashWebViewAsync();
+        }
+
+        private void ApplyRegion()
+        {
             try
             {
                 var path = new GraphicsPath();
-                int r = 16;
+                int r = Math.Max(8,
+                    Math.Min(16, Width / 16));
                 int w = Width;
                 int h = Height;
 
@@ -67,13 +101,6 @@ namespace HRKonek
                 Region = new Region(path);
             }
             catch { }
-        }
-
-        protected override async void OnLoad(
-            EventArgs e)
-        {
-            base.OnLoad(e);
-            await InitSplashWebViewAsync();
         }
 
         private async Task InitSplashWebViewAsync()
@@ -259,8 +286,8 @@ namespace HRKonek
   }}
 
   html, body {{
-    width: 480px;
-    height: 300px;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
     font-family: 'Segoe UI', system-ui, sans-serif;
     background: linear-gradient(
@@ -273,45 +300,45 @@ namespace HRKonek
   }}
 
   .card {{
-    width: 380px;
+    width: min(88%, 380px);
     background: #ffffff;
     border-radius: 16px;
     box-shadow: 0 4px 24px rgba(0,0,0,0.25);
-    padding: 28px 24px 22px;
+    padding: clamp(18px, 5vmin, 28px) clamp(14px, 4vmin, 24px) clamp(14px, 4vmin, 22px);
     display: flex;
     flex-direction: column;
     align-items: center;
   }}
 
   .logo-wrap {{
-    width: 80px;
-    height: 80px;
+    width: clamp(56px, 18vmin, 80px);
+    height: clamp(56px, 18vmin, 80px);
     border-radius: 50%;
     border: 2px solid #1E3A8A;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    margin-bottom: 12px;
+    margin-bottom: clamp(8px, 2vmin, 12px);
     background: #f8faff;
   }}
 
   .logo-img {{
-    width: 64px;
-    height: 64px;
+    width: clamp(44px, 14vmin, 64px);
+    height: clamp(44px, 14vmin, 64px);
     border-radius: 50%;
     object-fit: contain;
   }}
 
   .logo-fallback {{
     color: #1E3A8A;
-    font-size: 22px;
+    font-size: clamp(18px, 5vmin, 22px);
     font-weight: 700;
   }}
 
   .app-name {{
     color: #111827;
-    font-size: 22px;
+    font-size: clamp(18px, 5vmin, 22px);
     font-weight: 700;
     letter-spacing: 0.3px;
     margin-bottom: 1px;
@@ -319,10 +346,10 @@ namespace HRKonek
 
   .app-sub {{
     color: #9ca3af;
-    font-size: 10px;
+    font-size: clamp(8px, 2.5vmin, 10px);
     letter-spacing: 2px;
     text-transform: uppercase;
-    margin-bottom: 20px;
+    margin-bottom: clamp(12px, 3vmin, 20px);
   }}
 
   .progress-wrap {{
@@ -335,7 +362,7 @@ namespace HRKonek
 
   .progress-track {{
     width: 100%;
-    height: 4px;
+    height: clamp(3px, 1vmin, 5px);
     background: #e5e7eb;
     border-radius: 2px;
     overflow: hidden;
@@ -360,17 +387,17 @@ namespace HRKonek
 
   .status-text {{
     color: #6b7280;
-    font-size: 11px;
+    font-size: clamp(10px, 2.5vmin, 12px);
     text-align: center;
-    min-height: 16px;
+    min-height: 1em;
   }}
 
   .version {{
     position: absolute;
-    bottom: 10px;
-    right: 14px;
+    bottom: clamp(6px, 1.5vmin, 10px);
+    right: clamp(8px, 2vmin, 14px);
     color: rgba(255,255,255,0.4);
-    font-size: 9px;
+    font-size: clamp(7px, 2vmin, 9px);
     letter-spacing: 0.5px;
   }}
 </style>
