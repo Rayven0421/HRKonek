@@ -49,7 +49,7 @@ export default function AppTitlebar() {
   return (
     <div
       onMouseDown={handleMouseDown}
-      className="flex-shrink-0 h-10 flex items-center
+      className="app-titlebar flex-shrink-0 h-10 flex items-center
         justify-between select-none
         bg-[#0B1628] border-b
         border-white/[0.06]"

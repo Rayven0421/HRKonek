@@ -52,6 +52,10 @@ html, body {
 }
 
 @media print {
+  .app-titlebar {
+    display: none !important;
+  }
+
   @page {
     size: A4 portrait;
     margin: 0;

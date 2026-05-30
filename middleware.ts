@@ -8,7 +8,7 @@ const publicPaths = new Set([
   '/apply',
 ])
 
-const STATIC_EXT = /\.(ico|png|jpg|jpeg|gif|svg|webp|css|js|woff2?|ttf|eot|otf|mp4|webm|pdf)$/
+const STATIC_EXT = /\.(ico|png|jpg|jpeg|gif|svg|webp|css|js|woff2?|ttf|eot|otf|mp4|webm|pdf)$/i
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
