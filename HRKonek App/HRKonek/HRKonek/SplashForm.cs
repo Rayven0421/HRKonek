@@ -1,269 +1,415 @@
+using System;
+using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.WinForms;
 
-namespace HRKonek;
-
-/// <summary>
-/// Ultra-smooth splash screen.
-///
-/// Design philosophy: kill the lag by killing the work.
-///   • The entire background, icon, title, and tagline are painted ONCE
-///     into _staticBmp at construction — never touched again.
-///   • Per frame: blit static bmp + two DrawArc + one DrawString.
-///     That is literally four GDI calls per frame.
-///   • No PathGradientBrush, no per-frame brush/pen/font allocation,
-///     no glow pulse — removed entirely.
-///   • Timer at 33 ms (~30 fps) — smooth for a splash, half the CPU of 60fps.
-///   • WS_EX_COMPOSITED lets the OS double-buffer the window natively.
-/// </summary>
-internal sealed class SplashForm : Form
+namespace HRKonek
 {
-    // ── Config ──────────────────────────────────────────────────────────
-    private const string IconPath =
-        @"C:\Users\rayve\Desktop\HRKonek\hrkonek\public\hrkonek-icon.png";
-
-    private const int W = 400;
-    private const int H = 280;
-    private const int Radius = 18;
-    private const int CX = W / 2;
-
-    // ── Palette ─────────────────────────────────────────────────────────
-    private static readonly Color BgTop = Color.FromArgb(11, 17, 38);
-    private static readonly Color BgBot = Color.FromArgb(17, 27, 60);
-    private static readonly Color AccentA = Color.FromArgb(59, 130, 246);
-    private static readonly Color AccentB = Color.FromArgb(99, 102, 241);
-    private static readonly Color TextSub = Color.FromArgb(148, 163, 184);
-    private static readonly Color BorderClr = Color.FromArgb(45, 65, 130);
-
-    // ── Animation state ──────────────────────────────────────────────────
-    private float _spinAngle;
-    private int _dotTick;
-    private int _dotPhase;   // 0, 1, 2
-
-    // ── Static backing bitmap ────────────────────────────────────────────
-    private readonly Bitmap _staticBmp;
-
-    // ── Cached per-frame resources (allocated once) ──────────────────────
-    private readonly Font _statusFont;
-    private readonly SolidBrush _statusBrush;
-    private readonly Pen _arcPen;
-    private readonly Pen _arcTrailPen;
-    private static readonly Rectangle ArcRect = new(CX - 13, 210 - 13, 26, 26);
-
-    // ── Timer ───────────────────────────────────────────────────────────
-    private readonly System.Windows.Forms.Timer _timer;
-
-    // ── Constructor ─────────────────────────────────────────────────────
-    public SplashForm()
+    public partial class SplashForm : Form
     {
-        FormBorderStyle = FormBorderStyle.None;
-        ShowInTaskbar = false;
-        TopMost = true;
-        StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(W, H);
-        DoubleBuffered = true;
-        TransparencyKey = Color.Magenta;
-        BackColor = Color.Magenta;
+        private CancellationTokenSource _cts = new();
+        private bool _webViewReady = false;
 
-        // Pre-allocate per-frame resources
-        _statusFont = new Font("Segoe UI", 10.5f, FontStyle.Regular);
-        _statusBrush = new SolidBrush(TextSub);
-        _arcPen = new Pen(AccentA, 2.5f)
-        { StartCap = LineCap.Round, EndCap = LineCap.Round };
-        _arcTrailPen = new Pen(Color.FromArgb(110, AccentB), 2.5f)
-        { StartCap = LineCap.Round, EndCap = LineCap.Round };
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(
+            IntPtr hwnd, int attr,
+            ref int attrValue, int attrSize);
 
-        // Bake static layer once
-        _staticBmp = new Bitmap(W, H, PixelFormat.Format32bppArgb);
-        BakeStaticLayer();
+        private const int
+            DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+        private const int
+            DWMWCP_ROUND = 2;
 
-        // Timer ~30 fps
-        _timer = new System.Windows.Forms.Timer { Interval = 33 };
-        _timer.Tick += OnTick;
-        _timer.Start();
-    }
-
-    // ── OS-level compositing ─────────────────────────────────────────────
-    protected override CreateParams CreateParams
-    {
-        get
+        public SplashForm()
         {
-            const int WS_EX_COMPOSITED = 0x02000000;
-            var cp = base.CreateParams;
-            cp.ExStyle |= WS_EX_COMPOSITED;
-            return cp;
-        }
-    }
-
-    // ── Bake static layer ────────────────────────────────────────────────
-    private void BakeStaticLayer()
-    {
-        using var g = Graphics.FromImage(_staticBmp);
-        g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-
-        var bounds = new Rectangle(0, 0, W, H);
-        using var path = RoundedRect(bounds, Radius);
-
-        // Background gradient
-        using var bgBrush = new LinearGradientBrush(
-            bounds, BgTop, BgBot, LinearGradientMode.Vertical);
-        g.FillPath(bgBrush, path);
-
-        // Subtle static centre glow (baked, zero runtime cost)
-        using var glowBrush = new SolidBrush(Color.FromArgb(16, AccentA));
-        g.FillEllipse(glowBrush, CX - 120, 10, 240, 190);
-
-        // Border rim
-        using var borderPen = new Pen(Color.FromArgb(55, BorderClr), 1f);
-        g.DrawPath(borderPen, path);
-
-        // Top accent stripe
-        using var stripeBrush = new LinearGradientBrush(
-            new Rectangle(0, 0, W, 2), AccentA, AccentB,
-            LinearGradientMode.Horizontal);
-        using var stripeClip = RoundedRect(new Rectangle(0, 0, W, Radius + 2), Radius);
-        g.SetClip(stripeClip);
-        g.FillRectangle(stripeBrush, 0, 0, W, 2);
-        g.ResetClip();
-
-        // Icon
-        const int iconSize = 64;
-        const int iconY = 34;
-        int iconX = CX - iconSize / 2;
-
-        using var ringPen = new Pen(Color.FromArgb(50, AccentA), 1.5f);
-        g.DrawEllipse(ringPen, iconX - 6, iconY - 6, iconSize + 12, iconSize + 12);
-
-        Bitmap? icon = null;
-        try
-        {
-            if (File.Exists(IconPath))
-                using (var raw = new Bitmap(IconPath))
-                    icon = MakeCircular(raw, iconSize);
-        }
-        catch { }
-
-        if (icon is not null)
-        {
-            g.DrawImage(icon, iconX, iconY, iconSize, iconSize);
-            icon.Dispose();
-        }
-        else
-        {
-            using var fb = new SolidBrush(Color.FromArgb(30, 58, 138));
-            g.FillEllipse(fb, iconX, iconY, iconSize, iconSize);
-            using var fnt = new Font("Segoe UI", 20f, FontStyle.Bold);
-            var isz = g.MeasureString("HR", fnt);
-            g.DrawString("HR", fnt, Brushes.White,
-                CX - isz.Width / 2f, iconY + iconSize / 2f - isz.Height / 2f);
+            InitializeComponent();
         }
 
-        // Title
-        using var titleFont = new Font("Segoe UI", 22f, FontStyle.Bold);
-        var tsz = g.MeasureString("HRKonek", titleFont);
-        g.DrawString("HRKonek", titleFont, Brushes.White,
-            CX - tsz.Width / 2f, 108f);
-
-        // Tagline
-        using var tagFont = new Font("Segoe UI", 8.5f, FontStyle.Regular);
-        using var tagBrush = new SolidBrush(Color.FromArgb(95, TextSub));
-        var tgsz = g.MeasureString("Human Resource Information System", tagFont);
-        g.DrawString("Human Resource Information System", tagFont, tagBrush,
-            CX - tgsz.Width / 2f, 138f);
-
-        // Arc track ring (static)
-        using var trackPen = new Pen(Color.FromArgb(28, TextSub), 2.5f);
-        g.DrawEllipse(trackPen, ArcRect);
-    }
-
-    // ── Timer tick ──────────────────────────────────────────────────────
-    private void OnTick(object? sender, EventArgs e)
-    {
-        _spinAngle = (_spinAngle + 6f) % 360f;
-
-        _dotTick++;
-        if (_dotTick >= 14)
+        protected override void OnHandleCreated(
+            EventArgs e)
         {
-            _dotTick = 0;
-            _dotPhase = (_dotPhase + 1) % 3;
+            base.OnHandleCreated(e);
+
+            try
+            {
+                int preference = DWMWCP_ROUND;
+                DwmSetWindowAttribute(
+                    Handle,
+                    DWMWA_WINDOW_CORNER_PREFERENCE,
+                    ref preference,
+                    sizeof(int));
+            }
+            catch { }
+
+            try
+            {
+                var path = new GraphicsPath();
+                int r = 16;
+                int w = Width;
+                int h = Height;
+
+                path.AddArc(0, 0, r * 2, r * 2,
+                    180, 90);
+                path.AddArc(w - r * 2, 0,
+                    r * 2, r * 2, 270, 90);
+                path.AddArc(w - r * 2, h - r * 2,
+                    r * 2, r * 2, 0, 90);
+                path.AddArc(0, h - r * 2,
+                    r * 2, r * 2, 90, 90);
+                path.CloseFigure();
+
+                Region = new Region(path);
+            }
+            catch { }
         }
 
-        Invalidate();
-    }
-
-    // ── Paint — just a blit + 3 GDI calls ───────────────────────────────
-    protected override void OnPaint(PaintEventArgs e)
-    {
-        var g = e.Graphics;
-        g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-
-        // 1. Blit static layer
-        g.DrawImageUnscaled(_staticBmp, 0, 0);
-
-        // 2. Spinning arc
-        g.DrawArc(_arcPen, ArcRect, _spinAngle, 110f);
-        g.DrawArc(_arcTrailPen, ArcRect, _spinAngle + 110f, 55f);
-
-        // 3. Status text
-        string status = _dotPhase switch
+        protected override async void OnLoad(
+            EventArgs e)
         {
-            0 => "Starting server.",
-            1 => "Starting server..",
-            _ => "Starting server..."
-        };
-        var sz = g.MeasureString(status, _statusFont);
-        g.DrawString(status, _statusFont, _statusBrush,
-            CX - sz.Width / 2f, 233f);
-    }
-
-    // ── Region ──────────────────────────────────────────────────────────
-    protected override void OnResize(EventArgs e) { base.OnResize(e); ApplyRegion(); }
-    protected override void OnLoad(EventArgs e) { base.OnLoad(e); ApplyRegion(); }
-    private void ApplyRegion() =>
-        Region = new Region(RoundedRect(new Rectangle(0, 0, W, H), Radius));
-
-    // ── Helpers ─────────────────────────────────────────────────────────
-    private static GraphicsPath RoundedRect(Rectangle r, int rad)
-    {
-        int d = rad * 2;
-        var gp = new GraphicsPath();
-        gp.AddArc(r.X, r.Y, d, d, 180, 90);
-        gp.AddArc(r.Right - d, r.Y, d, d, 270, 90);
-        gp.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
-        gp.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
-        gp.CloseFigure();
-        return gp;
-    }
-
-    private static Bitmap MakeCircular(Bitmap src, int size)
-    {
-        var bmp = new Bitmap(size, size, PixelFormat.Format32bppArgb);
-        using var g = Graphics.FromImage(bmp);
-        g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-        using var clip = new GraphicsPath();
-        clip.AddEllipse(0, 0, size, size);
-        g.SetClip(clip);
-        g.DrawImage(src, 0, 0, size, size);
-        return bmp;
-    }
-
-    // ── Cleanup ─────────────────────────────────────────────────────────
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            _timer.Stop();
-            _timer.Dispose();
-            _staticBmp.Dispose();
-            _statusFont.Dispose();
-            _statusBrush.Dispose();
-            _arcPen.Dispose();
-            _arcTrailPen.Dispose();
+            base.OnLoad(e);
+            await InitSplashWebViewAsync();
         }
-        base.Dispose(disposing);
+
+        private async Task InitSplashWebViewAsync()
+        {
+            try
+            {
+                var env = await
+                    CoreWebView2Environment
+                    .CreateAsync(null,
+                        Path.Combine(
+                            Path.GetTempPath(),
+                            "HRKonekSplash"));
+
+                await _splashView
+                    .EnsureCoreWebView2Async(env);
+
+                // Disable all browser UI
+                var s = _splashView
+                    .CoreWebView2.Settings;
+                s.AreDefaultContextMenusEnabled
+                    = false;
+                s.AreDevToolsEnabled = false;
+                s.IsStatusBarEnabled = false;
+                s.IsZoomControlEnabled = false;
+
+                // Load the HTML splash content
+                _splashView.CoreWebView2
+                    .NavigateToString(
+                        GetSplashHtml("Initializing..."));
+
+                _splashView.CoreWebView2
+                    .NavigationCompleted += (s, e) =>
+                    {
+                        _webViewReady = true;
+                        _ = RunStartupAsync();
+                    };
+            }
+            catch
+            {
+                // WebView2 not available,
+                // start server anyway
+                _webViewReady = true;
+                _ = RunStartupAsync();
+            }
+        }
+
+        private void UpdateStatus(
+            string message, int percent)
+        {
+            if (!_webViewReady) return;
+            if (!IsHandleCreated) return;
+
+            BeginInvoke(new Action(async () =>
+            {
+                try
+                {
+                    string safeMsg = message
+                        .Replace("'", "\\'")
+                        .Replace("\"", "\\\"");
+
+                    await _splashView.CoreWebView2
+                        .ExecuteScriptAsync(
+                        $"updateProgress('{safeMsg}'" +
+                        $", {percent});");
+                }
+                catch { /* ignore */ }
+            }));
+        }
+
+        private async Task RunStartupAsync()
+        {
+            var progress = new Progress<string>(msg =>
+            {
+                // Map message to rough percent
+                int pct = msg.Contains("Locating")
+                    ? 10
+                    : msg.Contains("Checking")
+                    ? 25
+                    : msg.Contains("port")
+                    ? 35
+                    : msg.Contains("Starting")
+                    ? 50
+                    : msg.Contains("Waiting") ||
+                      msg.Contains(".")
+                    ? 70
+                    : msg.Contains("ready")
+                    ? 95
+                    : msg.Contains("ERROR")
+                    ? 100
+                    : 60;
+
+                UpdateStatus(msg, pct);
+            });
+
+            try
+            {
+                bool ok = await
+                    ServerManager.StartAsync(
+                        progress, _cts.Token);
+
+                if (ok)
+                {
+                    UpdateStatus("Launching...", 100);
+                    await Task.Delay(600);
+
+                    BeginInvoke(new Action(() =>
+                    {
+                        var main = new MainForm();
+                        main.Show();
+                        Close();
+                    }));
+                }
+                else
+                {
+                    BeginInvoke(new Action(() =>
+                    {
+                        MessageBox.Show(
+                            "Failed to start server.\n\n"
+                            + "Make sure:\n"
+                            + "• Node.js is installed\n"
+                            + "• Run npm run build first",
+                            "Startup Error",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                        Application.Exit();
+                    }));
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Application.Exit();
+            }
+            catch (Exception ex)
+            {
+                BeginInvoke(new Action(() =>
+                {
+                    MessageBox.Show(
+                        "Error: " + ex.Message,
+                        "Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                    Application.Exit();
+                }));
+            }
+        }
+
+        private static string GetSplashHtml(
+            string initialStatus)
+        {
+            string iconBase64 = "";
+            try
+            {
+                string iconPath = Path.Combine(
+                    AppDomain.CurrentDomain
+                        .BaseDirectory,
+                    "hrkonek-icon.png");
+
+                if (File.Exists(iconPath))
+                {
+                    byte[] bytes = File.ReadAllBytes(
+                        iconPath);
+                    iconBase64 = Convert
+                        .ToBase64String(bytes);
+                }
+            }
+            catch { }
+
+            string imgTag = !string.IsNullOrEmpty(
+                iconBase64)
+                ? $"<img src='data:image/png;" +
+                  $"base64,{iconBase64}' " +
+                  $"class='logo-img' />"
+                : "<span class='logo-fallback'>HR</span>";
+
+            return $@"<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8'>
+<style>
+  * {{
+    margin: 0; padding: 0;
+    box-sizing: border-box;
+  }}
+
+  html, body {{
+    width: 480px;
+    height: 300px;
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(
+      135deg, #0f172a 0%, #1e3a8a 55%, #1d4ed8 100%
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+  }}
+
+  .card {{
+    width: 380px;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+    padding: 28px 24px 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }}
+
+  .logo-wrap {{
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 2px solid #1E3A8A;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin-bottom: 12px;
+    background: #f8faff;
+  }}
+
+  .logo-img {{
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: contain;
+  }}
+
+  .logo-fallback {{
+    color: #1E3A8A;
+    font-size: 22px;
+    font-weight: 700;
+  }}
+
+  .app-name {{
+    color: #111827;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    margin-bottom: 1px;
+  }}
+
+  .app-sub {{
+    color: #9ca3af;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }}
+
+  .progress-wrap {{
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }}
+
+  .progress-track {{
+    width: 100%;
+    height: 4px;
+    background: #e5e7eb;
+    border-radius: 2px;
+    overflow: hidden;
+  }}
+
+  .progress-fill {{
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(
+      90deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%
+    );
+    background-size: 200% 100%;
+    width: 0%;
+    transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+    animation: shimmer 1.8s linear infinite;
+  }}
+
+  @keyframes shimmer {{
+    0%   {{ background-position: 200% 0; }}
+    100% {{ background-position: -200% 0; }}
+  }}
+
+  .status-text {{
+    color: #6b7280;
+    font-size: 11px;
+    text-align: center;
+    min-height: 16px;
+  }}
+
+  .version {{
+    position: absolute;
+    bottom: 10px;
+    right: 14px;
+    color: rgba(255,255,255,0.4);
+    font-size: 9px;
+    letter-spacing: 0.5px;
+  }}
+</style>
+</head>
+<body>
+  <div class='version'>v1.0.0</div>
+
+  <div class='card'>
+    <div class='logo-wrap'>
+      {imgTag}
+    </div>
+    <div class='app-name'>HRKonek</div>
+    <div class='app-sub'>Human Resource Information System</div>
+    <div class='progress-wrap'>
+      <div class='progress-track'>
+        <div class='progress-fill' id='bar'></div>
+      </div>
+      <div class='status-text' id='status'>Initializing...</div>
+    </div>
+  </div>
+
+<script>
+  function updateProgress(message, percent) {{
+    var bar = document.getElementById('bar');
+    var status = document.getElementById('status');
+    if (bar) bar.style.width = percent + '%';
+    if (status) status.textContent = message;
+  }}
+  updateProgress('Initializing...', 5);
+</script>
+</body>
+</html>";
+        }
+
+        protected override void OnFormClosing(
+            FormClosingEventArgs e)
+        {
+            _cts.Cancel();
+            base.OnFormClosing(e);
+        }
     }
 }

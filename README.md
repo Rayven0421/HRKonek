@@ -121,8 +121,8 @@ npm install
 npx prisma generate
 npx prisma db push
 
-# 5. Start the development server
-npm run dev
+# 5. Build the project
+npm run build
 ```
 
 Open [http://localhost:3000](http://localhost:3000) and log in with the admin credentials. If no admin user exists, run the seed endpoint or register via the app.
@@ -130,6 +130,24 @@ Open [http://localhost:3000](http://localhost:3000) and log in with the admin cr
 ---
 
 ## Running the Project
+
+### Option A — Desktop App (Windows, recommended)
+
+Use the C# WinForms launcher with a WebView2 window (no browser tab needed).
+
+1. **Build** the web app whenever you make changes:
+   ```bash
+   build.bat
+   ```
+   Or double-click `build.bat` in File Explorer.
+
+2. **Launch** by double-clicking `HRKonek.exe` in the project root.
+
+The launcher automatically starts `next start` on port 3000 and opens the app in a native window. Close the window to stop the server.
+
+> **Requirements**: .NET 10 Runtime, Node.js, WebView2 Runtime (pre-installed on Windows 11 / recent Windows 10).
+
+### Option B — Command line
 
 ```bash
 npm run dev        # Development server → http://localhost:3000

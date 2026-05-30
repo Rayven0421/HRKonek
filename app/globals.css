@@ -25,6 +25,23 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* ── Hide all scrollbars — desktop app only ── */
+::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+/* Keep scroll FUNCTIONALITY — just hide bar */
+html, body {
+  overflow-x: hidden;
+}
+
 .skeleton-pulse {
   animation: skeleton-pulse 1.4s ease-in-out infinite;
 }

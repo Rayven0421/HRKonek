@@ -22,4 +22,16 @@
     </Content>
   </ItemGroup>
 
+  <Target Name="CopyToProjectRoot" AfterTargets="AfterBuild">
+    <Copy SourceFiles="$(OutputPath)$(AssemblyName).exe;
+                        $(OutputPath)$(AssemblyName).dll;
+                        $(OutputPath)$(AssemblyName).deps.json;
+                        $(OutputPath)$(AssemblyName).runtimeconfig.json;
+                        $(OutputPath)$(AssemblyName).pdb;
+                        $(OutputPath)hrkonek-icon.png;
+                        $(OutputPath)Microsoft.Web.WebView2.Core.dll;
+                        $(OutputPath)Microsoft.Web.WebView2.WinForms.dll;
+                        $(OutputPath)Microsoft.Web.WebView2.Wpf.dll"
+          DestinationFolder="$(ProjectDir)..\..\..\" />
+  </Target>
 </Project>

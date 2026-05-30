@@ -1,104 +1,67 @@
-#nullable disable
+#nullable enable
+using Microsoft.Web.WebView2.WinForms;
 
-namespace HRKonek;
-
-partial class MainForm
+namespace HRKonek
 {
-    private System.ComponentModel.IContainer components = null!;
-
-    // ── Controls ──────────────────────────────────────────────────────
-    private Panel titleBarPanel = null!;
-    private Label titleLabel = null!;
-    private Panel btnMinimize = null!;
-    private Panel btnMaximize = null!;
-    private Panel btnClose = null!;
-    private Microsoft.Web.WebView2.WinForms.WebView2 webView = null!;
-
-    // ── Dispose ───────────────────────────────────────────────────────
-    protected override void Dispose(bool disposing)
+    partial class MainForm
     {
-        if (disposing)
+        private WebView2 _webView = null!;
+        private System.ComponentModel.IContainer?
+            components = null;
+
+        protected override void Dispose(
+            bool disposing)
         {
-            components?.Dispose();
-            webView?.Dispose();
+            if (disposing && components != null)
+                components.Dispose();
+            base.Dispose(disposing);
         }
-        base.Dispose(disposing);
-    }
 
-    // ── Designer-generated layout ─────────────────────────────────────
-    private void InitializeComponent()
-    {
-        // ── Title bar panel ──────────────────────────────────────────
-        titleBarPanel = new Panel
+        private void InitializeComponent()
         {
-            Dock = DockStyle.Top,
-            Height = 32,
-            BackColor = Color.FromArgb(30, 58, 138), // #1E3A8A
-        };
+            _webView = new WebView2();
+            ((System.ComponentModel.ISupportInitialize)
+                _webView).BeginInit();
+            SuspendLayout();
 
-        // ── Title label ──────────────────────────────────────────────
-        titleLabel = new Label
-        {
-            Text = "HRKonek",
-            ForeColor = Color.White,
-            Font = new Font("Segoe UI", 13f),
-            AutoSize = true,
-            Location = new Point(40, 7),
-            BackColor = Color.Transparent,
-            Padding = new Padding(0),
-            Margin = new Padding(0),
-        };
+            // ── WebView2 ─────────────────────────
+            _webView.Dock = DockStyle.Fill;
+            _webView.Anchor = AnchorStyles.Top |
+                AnchorStyles.Bottom |
+                AnchorStyles.Left |
+                AnchorStyles.Right;
+            _webView.Name = "_webView";
+            _webView.ZoomFactor = 1.0;
 
-        // ── Close button (rightmost) ─────────────────────────────────
-        btnClose = new Panel
-        {
-            Size = new Size(46, 32),
-            Dock = DockStyle.Right,
-            BackColor = Color.Transparent,
-            Cursor = Cursors.Hand,
-        };
+            // ── Form ─────────────────────────────
+            Name = "MainForm";
+            Text = "HRKonek";
+            AutoScroll = false;
+            AutoSize = false;
+            ClientSize = new Size(1280, 800);
+            MinimumSize = new Size(900, 600);
+            StartPosition =
+                FormStartPosition.CenterScreen;
 
-        // ── Maximize button ──────────────────────────────────────────
-        btnMaximize = new Panel
-        {
-            Size = new Size(46, 32),
-            Dock = DockStyle.Right,
-            BackColor = Color.Transparent,
-            Cursor = Cursors.Hand,
-        };
+            // Borderless — titlebar is in Next.js
+            FormBorderStyle = FormBorderStyle.None;
 
-        // ── Minimize button ──────────────────────────────────────────
-        btnMinimize = new Panel
-        {
-            Size = new Size(46, 32),
-            Dock = DockStyle.Right,
-            BackColor = Color.Transparent,
-            Cursor = Cursors.Hand,
-        };
+            // Icon
+            // this.Icon = new Icon("icon.ico");
 
-        // ── WebView2 ─────────────────────────────────────────────────
-        webView = new Microsoft.Web.WebView2.WinForms.WebView2
-        {
-            Dock = DockStyle.Fill,
-        };
+            Controls.Add(_webView);
 
-        // ── Assemble title bar (order matters for Dock.Right) ────────
-        //    Controls added first are pushed furthest right.
-        //    btnClose first → rightmost, btnMinimize last → leftmost of the three.
-        titleBarPanel.Controls.Add(titleLabel);
-        titleBarPanel.Controls.Add(btnMinimize);
-        titleBarPanel.Controls.Add(btnMaximize);
-        titleBarPanel.Controls.Add(btnClose);
+            this.SizeChanged += (s, e) => {
+                if (_webView != null)
+                {
+                    _webView.Size = ClientSize;
+                    _webView.Location = Point.Empty;
+                }
+            };
 
-        // ── Assemble form ────────────────────────────────────────────
-        Controls.Add(webView);
-        Controls.Add(titleBarPanel);
-
-        // ── Form defaults ────────────────────────────────────────────
-        FormBorderStyle = FormBorderStyle.None;
-        StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(1280, 800);
-        BackColor = Color.FromArgb(15, 23, 42); // #0F172A — matches splash bg
-        DoubleBuffered = true;
+            ((System.ComponentModel.ISupportInitialize)
+                _webView).EndInit();
+            ResumeLayout(false);
+        }
     }
 }
