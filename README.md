@@ -111,21 +111,15 @@
 git clone https://github.com/Rayven0421/hrkonek.git
 cd hrkonek
 
-# 2. Install dependencies
-npm install
-
-# 3. Update .env — edit DATABASE_URL to match your absolute project path
-#    DATABASE_URL="file:C:/Your/Actual/Path/hrkonek/prisma/dev.db"
-
-# 4. Generate Prisma client and push schema
-npx prisma generate
-npx prisma db push
-
-# 5. Build the project
-npm run build
+# 2. Build everything — .env is auto-created from .env.example
+build.bat
 ```
 
-Open [http://localhost:3000](http://localhost:3000) and log in with the admin credentials. If no admin user exists, run the seed endpoint or register via the app.
+Or double-click `build.bat` in File Explorer.
+
+On first run, it copies `.env.example` to `.env` and fills in the correct database path automatically. Then runs `npm install`, `npx prisma generate`, `npx prisma db push`, and `npm run build`.
+
+After building, open [http://localhost:3000](http://localhost:3000) or use the desktop app below.
 
 ---
 
@@ -135,17 +129,20 @@ Open [http://localhost:3000](http://localhost:3000) and log in with the admin cr
 
 Use the C# WinForms launcher with a WebView2 window (no browser tab needed).
 
-1. **Build** the web app whenever you make changes:
+1. **Build** the web app (first time, and again after any code changes):
    ```bash
    build.bat
    ```
    Or double-click `build.bat` in File Explorer.
+   
+   On first run, `.env` is auto-created from `.env.example` with the correct database path.
 
 2. **Launch** by double-clicking `HRKonek.exe` in the project root.
 
 The launcher automatically starts `next start` on port 3000 and opens the app in a native window. Close the window to stop the server.
 
-> **Requirements**: .NET 10 Runtime, Node.js, WebView2 Runtime (pre-installed on Windows 11 / recent Windows 10).
+> **Requirements**: .NET 10 Runtime, Node.js, WebView2 Runtime (pre-installed on Windows 11 / recent Windows 10). 
+> **Note**: Folder names with `#` or special characters can break the build. Stick to letters and hyphens.
 
 ### Option B — Command line
 
